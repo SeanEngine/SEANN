@@ -8,7 +8,7 @@
 namespace seblas {
     class ErrorHandler {
     public:
-         static void checkDeviceStatus();
+         static void checkDeviceStatus(const char* file, int line) ;
     };
 }
 

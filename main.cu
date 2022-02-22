@@ -12,40 +12,16 @@
 using namespace seblas;
 using namespace std;
 
-
 int main(int argc, char **argv) {
-    auto *A = Tensor::declare(shape4(16384, 16384))->create()->randomFill();
-    auto *B = Tensor::declare(shape4(16384, 16384))->create()->randomFill();
-    auto *C = Tensor::declare(shape4(16384, 16384))->create();
+    auto *A = Tensor::declare(shape4(12, 8))->create()->randomFill();
+    auto *B = Tensor::declare(shape4(8, 16))->create()->randomFill();
+    auto *C = Tensor::declare(shape4(12, 16))->create();
 
-    LARGE_INTEGER beg;
-    LARGE_INTEGER end;
-    LARGE_INTEGER frq;
-
-    float a = 1, b=0;
-
-    QueryPerformanceFrequency(&frq);
-    QueryPerformanceCounter(&beg);
     callGemmPrefetching(A,B,C);
-    QueryPerformanceCounter(&end);
-    cout << "fastGemm:   " << (double) (end.QuadPart - beg.QuadPart) / 1e7 << endl;
+    inspect(C);
 
-    C->zeroFill();
+    cout<<"-------------------------------------"<<endl;
 
-    cublasHandle_t handle;
-    cublasCreate(&handle);
-    cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, (int)A->dims.rows, (int)B->dims.cols, (int)A->dims.cols, &a, A->elements,
-                (int)A->dims.cols, B->elements, (int)B->dims.cols, &b, C->elements, (int)C->dims.cols);
-    cublasDestroy(handle);
-
-    cout<<"-----------------"<<endl;
-
-    QueryPerformanceCounter(&beg);
-    cublasCreate(&handle);
-    cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_T, (int)A->dims.rows, (int)B->dims.cols, (int)A->dims.cols, &a, A->elements,
-                (int)A->dims.cols, B->elements, (int)B->dims.cols, &b, C->elements, (int)C->dims.cols);
-    cublasDestroy(handle);
-    QueryPerformanceCounter(&end);
-    cout<<"Cublas:      " <<(double)(end.QuadPart - beg.QuadPart)/1e7<<endl;
+    callGemmNaive(A,B,C);
+    inspect(C);
 }
-

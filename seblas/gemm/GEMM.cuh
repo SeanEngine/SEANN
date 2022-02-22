@@ -9,6 +9,7 @@
 
 namespace seblas {
     Tensor* callGemmPrefetching(Tensor* A, Tensor* B, Tensor* C);
+    Tensor* callGemmNaive(Tensor* A, Tensor* B, Tensor* C);
 }
 
 

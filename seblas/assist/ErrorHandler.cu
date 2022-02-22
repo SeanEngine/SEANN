@@ -6,10 +6,10 @@
 #include <iostream>
 #include <cassert>
 
-void seblas::ErrorHandler::checkDeviceStatus() {
+void seblas::ErrorHandler::checkDeviceStatus(const char* file, int line) {
      cudaError_t err = cudaGetLastError();
      if(err!=cudaSuccess){
-         std::cout<<"Encountered CUDA Errors : "<<__FILE__<<" "<<__LINE__<<cudaGetErrorString(err)<<std::endl;
+         std::cout<<"Encountered CUDA Errors : "<<file<<" "<<line<<" "<<cudaGetErrorString(err)<<std::endl;
          assert(err==cudaSuccess);
      }
 }

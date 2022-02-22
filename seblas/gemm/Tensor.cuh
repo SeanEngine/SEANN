@@ -65,20 +65,20 @@ namespace seblas {
         [[nodiscard]] float get(unsigned int depth, unsigned int row, unsigned int col) const;
         [[nodiscard]] float get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
 
-        [[nodiscard]] __device__ __inline__ float getD(unsigned int index) const;
-        [[nodiscard]] __device__ __inline__ float getD(unsigned int row, unsigned int col) const;
-        [[nodiscard]] __device__ __inline__ float getD(unsigned int depth, unsigned int row, unsigned int col) const;
-        [[nodiscard]] __device__ __inline__ float getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col);
+        [[nodiscard]] __device__ float getD(unsigned int index) const;
+        [[nodiscard]] __device__ float getD(unsigned int row, unsigned int col) const;
+        [[nodiscard]] __device__ float getD(unsigned int depth, unsigned int row, unsigned int col) const;
+        [[nodiscard]] __device__ float getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col);
 
         void set(unsigned int index, float val) const;
         void set(unsigned int row, unsigned int col, float val) const;
         void set(unsigned int depth, unsigned int row, unsigned int col, float val) const;
         void set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const;
 
-        __inline__ __device__ void setD(unsigned int index, float val) const;
-        __inline__ __device__ void setD(unsigned int row, unsigned int col, float val) const;
-        __inline__ __device__ void setD(unsigned int depth, unsigned int row, unsigned int col, float val) const;
-        __inline__ __device__ void setD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const;
+        __device__ void setD(unsigned int index, float val) const;
+        __device__ void setD(unsigned int row, unsigned int col, float val) const;
+        __device__ void setD(unsigned int depth, unsigned int row, unsigned int col, float val) const;
+        __device__ void setD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const;
 
 
         ///declare a tensor without allocating elements
@@ -93,14 +93,14 @@ namespace seblas {
         static void destroy(Tensor* tensor){
             cudaFree(tensor->elements);
             cudaFreeHost(tensor);
-            ErrorHandler::checkDeviceStatus();
+            ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
         }
 
         ///destroy a tensor object on Host
         static void destroyHost(Tensor* tensor){
             cudaFreeHost(tensor->elements);
             cudaFreeHost(tensor);
-            ErrorHandler::checkDeviceStatus();
+            ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
         }
 
         ///alloc the tensor on device memory
@@ -122,7 +122,7 @@ namespace seblas {
     static void copyD2H(Tensor* onDevice, Tensor* onHost){
         assert(onDevice->dims.size == onHost->dims.size);
         cudaMemcpy(onHost->elements, onDevice->elements, sizeof(float) * onDevice->dims.size, cudaMemcpyDeviceToHost);
-        ErrorHandler::checkDeviceStatus();
+        ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     }
 }
 

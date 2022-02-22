@@ -3,20 +3,34 @@
 //
 
 #include <cassert>
+#include <iostream>
 #include "GEMM.cuh"
-#include "../assist/ErrorHandler.cuh"
 #include "../assist/DBGTools.cuh"
 
 using namespace seblas;
+
+#define assertGemm(A,B,C) assert((A)->dims.cols == (B)->dims.rows \
+&& (A)->dims.rows == (C)->dims.rows && (B)->dims.cols==(C)->dims.cols)
 
 #define BM 128
 #define BN 128
 #define BK 8
 #define RM 8
 #define RN 8
-#define DU true
 
 #define toFloat4(ptr) (reinterpret_cast<float4*>(&(ptr))[0])
+
+__global__ void gemmNaive(Tensor *A, Tensor *B, Tensor *C){
+    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+    unsigned int col = threadIdx.x + blockDim.x * blockIdx.x;
+    float value = 0;
+    if(row < C->dims.rows && col < C->dims.cols){
+        for (int am = 0; am < A->dims.cols; am++) {
+            value += A->getD(row, am) * B->getD(am,col);
+        }
+        C->setD(row,col,value);
+    }
+}
 
 /**
  * The fast gemm that utilized smem and registers with data prefetching
@@ -31,7 +45,7 @@ using namespace seblas;
  */
 template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
-__global__ void gemmPrefetching(Tensor *A, Tensor *B, Tensor *C) {
+__global__ void gemmPrefetching(Tensor *A, Tensor *B, Tensor *C, Tensor *tmp) {
 
     const unsigned int M = A->dims.rows;
     const unsigned int N = B->dims.cols;
@@ -76,18 +90,25 @@ __global__ void gemmPrefetching(Tensor *A, Tensor *B, Tensor *C) {
     const int readRowStrideA = threadCount / readThreadPerRowA;
     const int readRowStrideB = threadCount / readThreadPerRowB;
 
+
     ///prefetch the first smem and register block before starting the main loop
     #pragma unroll
     for(int i = 0; i < BLOCK_M; i+=readRowStrideA){
         int loadIndex = i / readRowStrideA * 4;
-        if(blockM + readRowA + i < M && readColA < K){
-            toFloat4(bufferA[loadIndex]) = toFloat4(ptrA[(readRowA + i)*K + readColA]);
+        if(blockM + readRowA + i < M && readColA < K) {
+            toFloat4(bufferA[loadIndex]) = toFloat4(ptrA[(readRowA + i) * K + readColA]);
+            //transpose
+            tileA[0][readColA][readRowA + i] = bufferA[loadIndex];
+            tileA[0][readColA + 1][readRowA + i] = bufferA[loadIndex + 1];
+            tileA[0][readColA + 2][readRowA + i] = bufferA[loadIndex + 2];
+            tileA[0][readColA + 3][readRowA + i] = bufferA[loadIndex + 3];
+
+            tmp->elements[readColA * 128 + readRowA + i] = bufferA[loadIndex];
+            tmp->elements[(readColA + 1) * 128 + readRowA + i] = bufferA[loadIndex+1];
+            tmp->elements[(readColA + 2) * 128 + readRowA + i] = bufferA[loadIndex+2];
+            tmp->elements[(readColA + 3) * 128 + readRowA + i] = bufferA[loadIndex+3];
+
         }
-        //transpose
-        tileA[0][readColA][readRowA + i] = bufferA[loadIndex];
-        tileA[0][readColA+1][readRowA + i] = bufferA[loadIndex+1];
-        tileA[0][readColA+2][readRowA + i] = bufferA[loadIndex+2];
-        tileA[0][readColA+3][readRowA + i] = bufferA[loadIndex+3];
     }
 
     #pragma unroll
@@ -161,7 +182,6 @@ __global__ void gemmPrefetching(Tensor *A, Tensor *B, Tensor *C) {
                         tileB[nextStageFlag][i + 1][REGIS_N * threadIdx.x + rn]);
             }
 
-
             #pragma unroll
             for(int rm = 0; rm < REGIS_M; rm ++){
                 #pragma unroll
@@ -217,8 +237,10 @@ __global__ void gemmPrefetching(Tensor *A, Tensor *B, Tensor *C) {
     for(int rm = 0; rm < REGIS_M; rm ++){
         #pragma unroll
         for(int rn = 0; rn < REGIS_N; rn += 4){
-            toFloat4(C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
-            + blockN + threadIdx.x * REGIS_N + rn]) = toFloat4(regisC[rm][rn]);
+            if((blockM + threadIdx.y * REGIS_M + rm < M && blockN + threadIdx.x * REGIS_N + rn < N)) {
+                toFloat4(C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
+                                     + blockN + threadIdx.x * REGIS_N + rn]) = toFloat4(regisC[rm][rn]);
+            }
         }
     }
 }
@@ -228,12 +250,26 @@ Tensor *seblas::callGemmPrefetching(Tensor *A, Tensor *B, Tensor *C) {
     assert(A->dims.cols == B->dims.rows);
     assert(A->dims.rows == C->dims.rows && B->dims.cols == C->dims.cols);
 
+    auto* tmp = Tensor::declare(shape4(BK,BM))->create();
+
     dim3 grid = dim3((C->dims.cols + BN - 1) / BN, (C->dims.rows + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
 
-    gemmPrefetching<BM, BN, BK, RM, RN><<<grid, block>>>(A,B,C);
+    gemmPrefetching<BM, BN, BK, RM, RN><<<grid, block>>>(A,B,C,tmp);
     cudaDeviceSynchronize();
+    inspect(tmp);
+    std::cout<<"-------------"<<std::endl;
 
-    ErrorHandler::checkDeviceStatus();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
+    return C;
+}
+
+Tensor* seblas::callGemmNaive(Tensor* A, Tensor* B, Tensor* C){
+    assertGemm(A,B,C);
+    dim3 grid = dim3((C->dims.cols + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x ,
+                     (C->dims.rows + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
+    gemmNaive<<<grid, CUDA_BLOCK_SIZE>>>(A,B,C);
+    cudaDeviceSynchronize();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return C;
 }

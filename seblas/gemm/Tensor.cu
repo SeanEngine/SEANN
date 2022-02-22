@@ -120,13 +120,13 @@ Tensor *Tensor::reshape(shape4 newDims) {
 
 Tensor *Tensor::create() {
     cudaMalloc(&elements, dims.size * sizeof(float));
-    ErrorHandler::checkDeviceStatus();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return this;
 }
 
 Tensor *Tensor::createHost() {
     cudaMallocHost(&elements, dims.size * sizeof(float));
-    ErrorHandler::checkDeviceStatus();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return this;
 }
 
@@ -142,13 +142,13 @@ Tensor *Tensor::randomFill() {
 
     randInit<<<totalProc, block>>>(this, begin.HighPart);
     cudaDeviceSynchronize();
-    ErrorHandler::checkDeviceStatus();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return this;
 }
 
 Tensor *Tensor::zeroFill() {
     cudaMemset(elements, 0, sizeof(float) * dims.size);
-    ErrorHandler::checkDeviceStatus();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return this;
 }
 
@@ -158,7 +158,7 @@ Tensor *Tensor::constFill(float val) {
 
     constInit<<<totalProc, block>>>(this, val);
     cudaDeviceSynchronize();
-    ErrorHandler::checkDeviceStatus();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return this;
 }
 
