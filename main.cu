@@ -13,15 +13,25 @@ using namespace seblas;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto *A = Tensor::declare(shape4(12, 8))->create()->randomFill();
-    auto *B = Tensor::declare(shape4(8, 16))->create()->randomFill();
-    auto *C = Tensor::declare(shape4(12, 16))->create();
+    auto *A = Tensor::declare(shape4(16384, 16384))->create()->randomFill();
+    auto *B = Tensor::declare(shape4(16384, 16384))->create()->randomFill();
+    auto *C = Tensor::declare(shape4(16384, 16384))->create();
 
     callGemmPrefetching(A,B,C);
-    inspect(C);
+
+    LARGE_INTEGER frq;
+    LARGE_INTEGER beg;
+    LARGE_INTEGER end;
+
+    QueryPerformanceFrequency(&frq);
+    QueryPerformanceCounter(&beg);
+
+    callGemmPrefetching(A,B,C);
+
+    QueryPerformanceCounter(&end);
+    cout<<(double)(end.QuadPart - beg.QuadPart)/1e7<<endl;
 
     cout<<"-------------------------------------"<<endl;
 
     callGemmNaive(A,B,C);
-    inspect(C);
 }
