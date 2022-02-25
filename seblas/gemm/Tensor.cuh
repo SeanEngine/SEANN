@@ -10,11 +10,9 @@
 #include "cuda_runtime_api.h"
 #include "../assist/ErrorHandler.cuh"
 
-#define MAX_GRID_DIM 65535
-
 namespace seblas {
 
-    const dim3 CUDA_BLOCK_SIZE = dim3(16,16);
+    const dim3 CUDA_BLOCK_SIZE = dim3(16,16,4);
     static const unsigned int WARP_SIZE = 32;
 
     struct shape4{
@@ -86,6 +84,7 @@ namespace seblas {
             Tensor* t;
             cudaMallocHost(&t, sizeof(Tensor));
             cudaMemcpy(&t->dims, &shape, sizeof(shape4), cudaMemcpyHostToHost);
+            ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
             return t;
         }
 
