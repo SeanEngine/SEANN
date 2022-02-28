@@ -3,15 +3,17 @@
 //
 
 #include <cassert>
-#include <iostream>
 #include "GEMM.cuh"
-#include "../assist/DBGTools.cuh"
+#include "mma.h"
 
 using namespace seblas;
+using namespace nvcuda;
 
 #define assertGemm(A,B,C) assert((A)->dims.cols == (B)->dims.rows \
 && (A)->dims.rows == (C)->dims.rows && (B)->dims.cols==(C)->dims.cols)
 
+//DO NOT MODIFY THESE CONSTANTS
+//UNLESS YOU ARE AWARE OF WHAT THEY MEANS
 #define BM 128
 #define BN 128
 #define BK 8
@@ -419,14 +421,6 @@ __global__ void gemmPrefetching(Tensor *A, Tensor *B, Tensor *C) {
     }
 }
 
-__inline__ __device__ float4* toFloat4(float* ptr){
-    return reinterpret_cast<float4*>(ptr);
-}
-
-__inline__ __device__ float3* toFloat3(float* ptr){
-    return reinterpret_cast<float3*>(ptr);
-}
-
 template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
 __global__ void gemmImplicit3D(Tensor* A, Tensor* B, Tensor* C, int stride, int padH, int padW){
@@ -628,6 +622,208 @@ __global__ void gemmImplicit3D(Tensor* A, Tensor* B, Tensor* C, int stride, int 
     }
 }
 
+/**
+ * This GEMM kernel is for the back propagation of convolutional layers
+ * It will produce errors of this layer based on the errors of the next layer
+ * the filter matrix will be transposed and directly multiply with the errors
+ * @tparam BLOCK_M
+ * @tparam BLOCK_N
+ * @tparam BLOCK_K
+ * @tparam REGIS_M
+ * @tparam REGIS_N
+ * @param A
+ * @param B
+ * @param C
+ * @param stride
+ * @param padH
+ * @param padW
+ */
+template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
+        const int REGIS_M, const int REGIS_N>
+__global__ void gemmImplicitBackprop(Tensor *A, Tensor*B, Tensor*C, int stride, int padH, int padW) {
+     unsigned const int M = A->dims.depth * A->dims.rows * A->dims.cols;  //FH * FW * IC
+     unsigned const int K = A->dims.w; //OC
+     unsigned const int N = C->dims.rows * C->dims.cols; //HW
+
+    unsigned const int FH = A->dims.rows;
+    unsigned const int FW = A->dims.cols;
+    unsigned const int IH = C->dims.rows;
+    unsigned const int IW = C->dims.cols;
+    unsigned const int OW = B->dims.cols;
+    unsigned const int IC = B->dims.depth;
+
+    ///allocate smems and registers
+    //The shared memory tile
+    __shared__ float tileA[2][BLOCK_K][BLOCK_M];  //transposed
+    __shared__ float tileB[2][BLOCK_K][BLOCK_N];
+
+    float regisA[2][REGIS_M];
+    float regisB[2][REGIS_N];
+    float regisC[REGIS_M][REGIS_N] = {0};
+
+    const int threadDimX = BLOCK_N / REGIS_N;
+    const int threadDimY = BLOCK_M / REGIS_M;
+    const int threadCount = threadDimX * threadDimY;
+    const int tid = threadIdx.y * threadDimX + threadIdx.x;
+
+    ///register for buffering elements during transporting global to shared mem
+    float bufferA[BLOCK_M * BLOCK_K / threadCount] = {0};
+    float bufferB[BLOCK_N * BLOCK_K / threadCount] = {0};
+
+    ///prepare configs for reading global
+    float* ptrA = A->elements + blockIdx.y * BLOCK_M * K;
+    float* ptrB = B->elements;
+    const int blockM = blockIdx.y * BLOCK_M;
+    const int blockN = blockIdx.x * BLOCK_N;
+
+    const int readThreadPerRowA = BLOCK_K;
+    const int readThreadPerRowB = BLOCK_N;
+
+    //the location each thread should be reading relative to smem
+    const int readRowA = tid / readThreadPerRowA;
+    const int readColA = tid % readThreadPerRowA;
+
+    const int readRowB = tid / readThreadPerRowB;
+    const int readColB = tid % readThreadPerRowB;
+
+    //these values are used to determine the amount of rows to jump
+    //if there is the need to do read multiple times
+    const int readRowStrideA = threadCount / readThreadPerRowA;
+    const int readRowStrideB = threadCount / readThreadPerRowB;
+
+    #pragma unroll
+    for(int i=0; i<BLOCK_M; i+= readRowStrideA){
+        if(blockM + readRowA + i < M && readColA < K){
+            //The mat A is not transposed since it will be transposed in smem
+            tileA[0][readColA][readRowA+i] = ptrA[(readColA)*M + readRowA + i];
+        }
+    }
+
+    #pragma unroll
+    for(int i=0; i<BLOCK_K; i+= readRowStrideB){
+        if(readRowB + i< K && blockN + readColB < N){
+            tileB[0][readRowB+i][readColB] = ptrB[(readRowB + i)*N + readColB];
+        }
+    }
+    __syncthreads();
+
+    #pragma unroll
+    for(int rm = 0; rm < REGIS_M; rm += 4){
+        toFloat4R(regisA[0][rm]) = toFloat4R(tileA[0][0][REGIS_M * threadIdx.y + rm]);
+    }
+
+    #pragma unroll
+    for(int rn = 0; rn < REGIS_N; rn += 4){
+        toFloat4R(regisB[0][rn]) = toFloat4R(tileB[0][0][REGIS_N * threadIdx.x + rn]);
+    }
+
+
+    ///main loop
+    int writeStageFlag = 1;
+    #pragma unroll
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+        //prefetch
+        if (nextTileID < K) {
+            #pragma unroll
+            for (int i = 0; i < BLOCK_M; i += readRowStrideA) {
+                int loadIndex = i / readRowStrideA;
+                //here the mat A is automatially transposed while reading
+                bufferA[loadIndex] = blockM + readRowA + i < M && readColA + nextTileID < K ?
+                                     ptrA[(readColA + nextTileID) * M + readRowA + i] : 0;
+            }
+
+            #pragma unroll
+            for (int i = 0; i < BLOCK_K; i += readRowStrideB) {
+                int loadIndex = i / readRowStrideB;
+                bufferB[loadIndex] = readRowB + i + nextTileID < K && blockN + readColB < N ?
+                                     ptrB[(readRowB + i + nextTileID) * N + readColB] : 0;
+            }
+        }
+
+        int nextStageFlag = writeStageFlag ^ 1;
+
+        //compute the part that is already in the registers and load the next segment
+        #pragma unroll
+        for (int i = 0; i < BLOCK_K - 1; i++) {
+
+            #pragma unroll
+            for (int rm = 0; rm < REGIS_M; rm += 4) {
+                toFloat4R(regisA[(i + 1) % 2][rm]) = toFloat4R(
+                        tileA[nextStageFlag][i + 1][REGIS_M * threadIdx.y + rm]);
+            }
+
+            #pragma unroll
+            for (int rn = 0; rn < REGIS_N; rn += 4) {
+                toFloat4R(regisB[(i + 1) % 2][rn]) = toFloat4R(
+                        tileB[nextStageFlag][i + 1][REGIS_N * threadIdx.x + rn]);
+            }
+
+            #pragma unroll
+            for (int rm = 0; rm < REGIS_M; rm++) {
+                #pragma unroll
+                for (int rn = 0; rn < REGIS_N; rn++) {
+                    regisC[rm][rn] += regisA[i % 2][rm] * regisB[i % 2][rn];
+                }
+            }
+        }
+
+        //load the data in the register buffers to tiles
+        if (nextTileID < K) {
+            #pragma unroll
+            for (int i = 0; i < BLOCK_M; i += readRowStrideA) {
+                int loadIndex = i / readRowStrideA;
+                tileA[writeStageFlag][readColA][readRowA + i] = bufferA[loadIndex];
+            }
+
+            #pragma unroll
+            for (int i = 0; i < BLOCK_K; i += readRowStrideB) {
+                int loadIndex = i / readRowStrideB;
+                tileB[writeStageFlag][readRowB + i][readColB] = bufferB[loadIndex];
+            }
+
+            __syncthreads();
+            writeStageFlag ^= 1;  //switch
+        }
+        #pragma unroll
+        for (int rm = 0; rm < REGIS_M; rm += 4) {
+            toFloat4R(regisA[0][rm]) = toFloat4R(
+                    tileA[nextStageFlag ^ 1][0][REGIS_M * threadIdx.y + rm]);
+        }
+
+        #pragma unroll
+        for (int rn = 0; rn < REGIS_N; rn += 4) {
+            toFloat4R(regisB[0][rn]) = toFloat4R(
+                    tileB[nextStageFlag ^ 1][0][REGIS_N * threadIdx.x + rn]);
+        }
+
+        #pragma unroll
+        for(int rm = 0; rm < REGIS_M; rm ++){
+            #pragma unroll
+            for(int rn = 0; rn < REGIS_N; rn ++){
+                regisC[rm][rn] += regisA[1][rm] * regisB[1][rn];
+            }
+        }
+    }
+
+    //run inverse mapping (col2img)
+    for(int rm = 0; rm < REGIS_M; rm++){
+        for(int rn = 0; rn < REGIS_N; rn++){
+            //calculate remapping
+            int oh = (blockN + threadIdx.x * REGIS_N)/OW;
+            int ow = (blockN + threadIdx.x * REGIS_N)%OW;
+            int ic = (blockM + threadIdx.y * REGIS_M + rm)/(FH * FW);
+            int fh = ((blockM + threadIdx.y * REGIS_M + rm)%(FH * FW))/FW;
+            int fw = ((blockM + threadIdx.y * REGIS_M + rm)%(FH * FW))%FW;
+            int ih = oh * stride - padH + fh;
+            int iw = ow * stride - padW + fw;
+
+            if(ih >= 0 && ih < IH && iw >= 0 && iw < IW && ic >= 0 && ic < IC){
+                atomicAdd(C->elements + ic * IW * IH + ih * IW + iw, regisC[rm][rn]);
+            }
+        }
+    }
+}
+
 Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int stride, int padH, int padW) {
     assert(A->dims.activeDims == 4 && B->dims.activeDims == 3 && C->dims.activeDims == 3);
     assert(C->dims.rows == (B->dims.rows - A->dims.rows + padH*2)/stride + 1);
@@ -641,6 +837,25 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int stride, int padH, int 
     dim3 block = dim3(BN / RN, BM / RM);
 
     gemmImplicit3D<BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C, stride, padH, padW);
+    cudaDeviceSynchronize();
+    ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+    return C;
+}
+
+//C is the error of this layer and B is for the next layer
+Tensor* seblas::convD(Tensor *A, Tensor *B, Tensor *C, int stride, int padH, int padW) {
+    assert(A->dims.activeDims == 4 && B->dims.activeDims == 3 && C->dims.activeDims == 3);
+    assert(B->dims.rows == (C->dims.rows - A->dims.rows + padH*2)/stride + 1);
+    assert(B->dims.cols == (C->dims.cols - A->dims.cols + padW*2)/stride + 1);
+    assert(B->dims.depth == A->dims.w && C->dims.depth == A->dims.depth);
+
+    unsigned int M = A->dims.cols * A->dims.rows * A->dims.depth;
+    unsigned int N = B->dims.rows * B->dims.cols;
+
+    dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
+    dim3 block = dim3(BN / RN, BM / RM);
+
+    gemmImplicitBackprop<BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C, stride, padH, padW);
     cudaDeviceSynchronize();
     ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
     return C;
