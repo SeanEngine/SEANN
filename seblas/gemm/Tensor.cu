@@ -10,171 +10,183 @@
 #include <curand_kernel.h>
 #include <windows.h>
 
-using namespace seblas;
+namespace seblas {
 
-__global__ void randInit(Tensor* target, long seed){
-    unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
-    curandStateXORWOW_t state;
-    curand_init(index * seed, 0, 0, &state);
-    target->setD(index, static_cast<float>((curand_uniform(&state))*2 - 1.0F));
-}
+    __global__ void randInit(Tensor *target, long seed) {
+        unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+        curandStateXORWOW_t state;
+        curand_init(index * seed, 0, 0, &state);
+        target->setD(index, static_cast<float>((curand_uniform(&state)) * 2 - 1.0F));
+    }
 
-__global__ void constInit(Tensor* target, float val){
-    unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
-    target->setD(index, val);
-}
+    __global__ void constInit(Tensor *target, float val) {
+        unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+        target->setD(index, val);
+    }
 
-float Tensor::get(unsigned int index) const {
-    return index < dims.size ? elements[index] : 0.0f;
-}
-
-
-float Tensor::get(unsigned int row, unsigned int col) const {
-    return row < dims.rows
-           && col < dims.cols
-           ? elements[row * dims.cols + col] : 0.0f;
-}
-
-float Tensor::get(unsigned int depth, unsigned int row, unsigned int col) const {
-    return row < dims.rows
-           && col < dims.cols
-           && depth < dims.depth
-           ? elements[depth * dims.rows * dims.cols + row * dims.cols + col] : 0.0f;
-}
-
-float Tensor::get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const {
-    return row < dims.rows
-           && col < dims.cols
-           && depth < dims.depth
-           && w < dims.w
-           ? elements[w * dims.depth * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col] : 0.0f;
-}
-
-__device__ float Tensor::getD(unsigned int index) const {
-    return index < dims.size ? elements[index] : 0;
-}
+    float Tensor::get(unsigned int index) const {
+        return index < dims.size ? elements[index] : 0.0f;
+    }
 
 
-__device__ float Tensor::getD(unsigned int row, unsigned int col) const {
-    return row < dims.rows
-           && col < dims.cols
-           ? elements[row * dims.cols + col] : 0.0f;
-}
+    float Tensor::get(unsigned int row, unsigned int col) const {
+        return row < dims.rows
+               && col < dims.cols
+               ? elements[row * dims.cols + col] : 0.0f;
+    }
 
-__device__ float Tensor::getD(unsigned int depth, unsigned int row, unsigned int col) const {
-    return row < dims.rows
-           && col < dims.cols
-           && depth < dims.depth
-           ? elements[depth * dims.rows * dims.cols + row * dims.cols + col] : 0.0f;
-}
+    float Tensor::get(unsigned int depth, unsigned int row, unsigned int col) const {
+        return row < dims.rows
+               && col < dims.cols
+               && depth < dims.c
+               ? elements[depth * dims.rows * dims.cols + row * dims.cols + col] : 0.0f;
+    }
 
-__device__ float Tensor::getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) {
-    return row < dims.rows
-           && col < dims.cols
-           && depth < dims.depth
-           && w < dims.w
-           ? elements[w * dims.depth * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col] : 0.0f;
-}
+    float Tensor::get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const {
+        return row < dims.rows
+               && col < dims.cols
+               && depth < dims.c
+               && w < dims.n
+               ? elements[w * dims.c * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col]
+               : 0.0f;
+    }
 
-void Tensor::set(unsigned int index, float val) const {
-    if(index < dims.size) elements[index] = val;
-}
+    __device__ float Tensor::getD(unsigned int index) const {
+        return index < dims.size ? elements[index] : 0;
+    }
 
-void Tensor::set(unsigned int row, unsigned int col, float val) const {
-    if(row < dims.rows && col < dims.cols) elements[row * dims.cols + col] = val;
-}
 
-void Tensor::set(unsigned int depth, unsigned int row, unsigned int col, float val) const {
-    if(depth < dims.depth && row < dims.rows && col < dims.cols)
-        elements[depth * dims.rows * dims.cols + row * dims.cols + col] = val;
-}
+    __device__ float Tensor::getD(unsigned int row, unsigned int col) const {
+        return row < dims.rows
+               && col < dims.cols
+               ? elements[row * dims.cols + col] : 0.0f;
+    }
 
-void Tensor::set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const {
-    if(w < dims.w && depth < dims.depth && row < dims.rows && col < dims.cols)
-        elements[w * dims.depth * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col] = val;
-}
+    __device__ float Tensor::getD(unsigned int depth, unsigned int row, unsigned int col) const {
+        return row < dims.rows
+               && col < dims.cols
+               && depth < dims.c
+               ? elements[depth * dims.rows * dims.cols + row * dims.cols + col] : 0.0f;
+    }
 
-__device__ void Tensor::setD(unsigned int index, float val) const{
-    if(index < dims.size) elements[index] = val;
-}
+    __device__ float Tensor::getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const {
+        return row < dims.rows
+               && col < dims.cols
+               && depth < dims.c
+               && w < dims.n
+               ? elements[w * dims.c * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col]
+               : 0.0f;
+    }
 
-__device__ void Tensor::setD(unsigned int row, unsigned int col, float val) const {
-    if(row < dims.rows && col < dims.cols) elements[row * dims.cols + col] = val;
-}
+    void Tensor::set(unsigned int index, float val) const {
+        if (index < dims.size) elements[index] = val;
+    }
 
-__device__ void Tensor::setD(unsigned int depth, unsigned int row, unsigned int col, float val) const {
-    if(depth < dims.depth && row < dims.rows && col < dims.cols)
-        elements[depth * dims.rows * dims.cols + row * dims.cols + col] = val;
-}
+    void Tensor::set(unsigned int row, unsigned int col, float val) const {
+        if (row < dims.rows && col < dims.cols) elements[row * dims.cols + col] = val;
+    }
 
-__device__ void Tensor::setD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const {
-    if(w < dims.w && depth < dims.depth && row < dims.rows && col < dims.cols)
-        elements[w * dims.depth * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col] = val;
-}
+    void Tensor::set(unsigned int depth, unsigned int row, unsigned int col, float val) const {
+        if (depth < dims.c && row < dims.rows && col < dims.cols)
+            elements[depth * dims.rows * dims.cols + row * dims.cols + col] = val;
+    }
 
-Tensor *Tensor::reshape(shape4 newDims) {
-    assert(newDims.size == dims.size);
-    dims = newDims;
-    return this;
-}
+    void Tensor::set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const {
+        if (w < dims.n && depth < dims.c && row < dims.rows && col < dims.cols)
+            elements[w * dims.c * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col] = val;
+    }
 
-Tensor *Tensor::create() {
-    cudaMalloc(&elements, dims.size * sizeof(float));
-    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-    return this;
-}
+    __device__ void Tensor::setD(unsigned int index, float val) const {
+        if (index < dims.size) elements[index] = val;
+    }
 
-Tensor *Tensor::createHost() {
-    cudaMallocHost(&elements, dims.size * sizeof(float));
-    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-    return this;
-}
+    __device__ void Tensor::setD(unsigned int row, unsigned int col, float val) const {
+        if (row < dims.rows && col < dims.cols) elements[row * dims.cols + col] = val;
+    }
 
-Tensor *Tensor::randomFill() {
-    LARGE_INTEGER cpuFre;
-    LARGE_INTEGER begin;
+    __device__ void Tensor::setD(unsigned int depth, unsigned int row, unsigned int col, float val) const {
+        if (depth < dims.c && row < dims.rows && col < dims.cols)
+            elements[depth * dims.rows * dims.cols + row * dims.cols + col] = val;
+    }
 
-    QueryPerformanceFrequency(&cpuFre);
-    QueryPerformanceCounter(&begin);
+    __device__ void
+    Tensor::setD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const {
+        if (w < dims.n && depth < dims.c && row < dims.rows && col < dims.cols)
+            elements[w * dims.c * dims.rows * dims.cols + depth * dims.rows * dims.cols + row * dims.cols + col] = val;
+    }
 
-    dim3 block = dim3(CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y);
-    unsigned int totalProc = (this->dims.size + block.x-1)/block.x;
+    Tensor *Tensor::reshape(shape4 newDims) {
+        assert(newDims.size == dims.size);
+        dims = newDims;
+        return this;
+    }
 
-    randInit<<<totalProc, block>>>(this, begin.HighPart);
-    cudaDeviceSynchronize();
-    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-    return this;
-}
+    Tensor *Tensor::create() {
+        cudaMalloc(&elements, dims.size * sizeof(float));
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return this;
+    }
 
-Tensor *Tensor::zeroFill() {
-    cudaMemset(elements, 0, sizeof(float) * dims.size);
-    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-    return this;
-}
+    Tensor *Tensor::createHost() {
+        cudaMallocHost(&elements, dims.size * sizeof(float));
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return this;
+    }
 
-Tensor *Tensor::constFill(float val) {
-    dim3 block = dim3(CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y);
-    unsigned int totalProc = (this->dims.size + block.x-1)/block.x;
+    Tensor *Tensor::randomFill() {
+        LARGE_INTEGER cpuFre;
+        LARGE_INTEGER begin;
 
-    constInit<<<totalProc, block>>>(this, val);
-    cudaDeviceSynchronize();
-    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-    return this;
-}
+        QueryPerformanceFrequency(&cpuFre);
+        QueryPerformanceCounter(&begin);
 
-bool shape4::operator==(shape4 other) const {
-    return this->rows == other.rows
-    && this->cols == other.cols
-    && this->depth == other.depth
-    && this->w == other.w
-    && this->activeDims == other.activeDims;
-}
+        dim3 block = dim3(CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y);
+        unsigned int totalProc = (this->dims.size + block.x - 1) / block.x;
 
-void shape4::copy(shape4 other) {
-    this->rows = other.rows;
-    this->cols = other.cols;
-    this->depth = other.depth;
-    this->w = other.w;
-    this->activeDims = other.activeDims;
-    this->size = other.size;
+        randInit<<<totalProc, block>>>(this, begin.HighPart);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return this;
+    }
+
+    Tensor *Tensor::zeroFill() {
+        cudaMemset(elements, 0, sizeof(float) * dims.size);
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return this;
+    }
+
+    Tensor *Tensor::constFill(float val) {
+        dim3 block = dim3(CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y);
+        unsigned int totalProc = (this->dims.size + block.x - 1) / block.x;
+
+        constInit<<<totalProc, block>>>(this, val);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return this;
+    }
+
+    bool shape4::operator==(shape4 other) const {
+        return this->rows == other.rows
+               && this->cols == other.cols
+               && this->c == other.c
+               && this->n == other.n
+               && this->activeDims == other.activeDims;
+    }
+
+    void shape4::copy(shape4 other) {
+        this->rows = other.rows;
+        this->cols = other.cols;
+        this->c = other.c;
+        this->n = other.n;
+        this->activeDims = other.activeDims;
+        this->size = other.size;
+    }
+
+    shape4 shape4::operator+(shape4 another) const {
+        return {another.n + n, another.c + c, another.rows + rows, another.cols + cols};
+    }
+
+    __device__ shape4 shape4::operator+(shape4 another) const {
+        return {another.n + n, another.c + c, another.rows + rows, another.cols + cols};
+    }
 }

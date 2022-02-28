@@ -17,8 +17,8 @@ namespace seio{
         unsigned int col = threadIdx.x + blockDim.x * blockIdx.x;
         unsigned int row = threadIdx.y + blockDim.y * blockIdx.y;
         unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
-        uchar element = col < dims.cols && row < dims.rows && depth < dims.depth
-                ? elements[(row * dims.cols + col)*dims.depth + depth] : 0;
+        uchar element = col < dims.cols && row < dims.rows && depth < dims.c
+                        ? elements[(row * dims.cols + col)*dims.c + depth] : 0;
         data->setD(depth, row, col, (float)element * decay);
     }
 
@@ -42,7 +42,7 @@ namespace seio{
         dim3 block = CUDA_BLOCK_SIZE;
         dim3 grid = dim3((dimensions.cols + blockDim - 1)/blockDim,
                           (dimensions.rows + blockDim - 1)/blockDim,
-                          (dimensions.depth + blockDepth - 1)/blockDepth);
+                         (dimensions.c + blockDepth - 1) / blockDepth);
         mat2tensor<<<grid,block>>>(elements,dimensions,output,RGB_DECAY);
         cudaDeviceSynchronize();
         cudaFree(elements);

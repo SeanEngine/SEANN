@@ -427,8 +427,8 @@ __global__ void gemmImplicit3D(Tensor* A, Tensor* B, Tensor* C, int stride, int 
 
     // MatA: OC, IC * FH * FW; MatB: IC * FH * FW, OH * OW; Mat C: OC, OH * OW
     ///insert parameters
-    unsigned const int M = A->dims.w;
-    unsigned const int K = A->dims.depth * A->dims.rows * A->dims.cols;
+    unsigned const int M = A->dims.n;
+    unsigned const int K = A->dims.c * A->dims.rows * A->dims.cols;
     unsigned const int N = C->dims.rows * C->dims.cols;
 
     unsigned const int FH = A->dims.rows;
@@ -641,8 +641,8 @@ __global__ void gemmImplicit3D(Tensor* A, Tensor* B, Tensor* C, int stride, int 
 template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
 __global__ void gemmImplicitBackprop(Tensor *A, Tensor*B, Tensor*C, int stride, int padH, int padW) {
-     unsigned const int M = A->dims.depth * A->dims.rows * A->dims.cols;  //FH * FW * IC
-     unsigned const int K = A->dims.w; //OC
+     unsigned const int M = A->dims.c * A->dims.rows * A->dims.cols;  //FH * FW * IC
+     unsigned const int K = A->dims.n; //OC
      unsigned const int N = C->dims.rows * C->dims.cols; //HW
 
     unsigned const int FH = A->dims.rows;
@@ -650,7 +650,7 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor*B, Tensor*C, int stride, 
     unsigned const int IH = C->dims.rows;
     unsigned const int IW = C->dims.cols;
     unsigned const int OW = B->dims.cols;
-    unsigned const int IC = B->dims.depth;
+    unsigned const int IC = B->dims.c;
 
     ///allocate smems and registers
     //The shared memory tile
@@ -828,9 +828,9 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int stride, int padH, int 
     assert(A->dims.activeDims == 4 && B->dims.activeDims == 3 && C->dims.activeDims == 3);
     assert(C->dims.rows == (B->dims.rows - A->dims.rows + padH*2)/stride + 1);
     assert(C->dims.cols == (B->dims.cols - A->dims.cols + padW*2)/stride + 1);
-    assert(C->dims.depth == A->dims.w && B->dims.depth == A->dims.depth);
+    assert(C->dims.c == A->dims.n && B->dims.c == A->dims.c);
 
-    unsigned int M = A->dims.w;
+    unsigned int M = A->dims.n;
     unsigned int N = C->dims.rows * C->dims.cols;
 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
@@ -847,9 +847,9 @@ Tensor* seblas::convD(Tensor *A, Tensor *B, Tensor *C, int stride, int padH, int
     assert(A->dims.activeDims == 4 && B->dims.activeDims == 3 && C->dims.activeDims == 3);
     assert(B->dims.rows == (C->dims.rows - A->dims.rows + padH*2)/stride + 1);
     assert(B->dims.cols == (C->dims.cols - A->dims.cols + padW*2)/stride + 1);
-    assert(B->dims.depth == A->dims.w && C->dims.depth == A->dims.depth);
+    assert(B->dims.c == A->dims.n && C->dims.c == A->dims.c);
 
-    unsigned int M = A->dims.cols * A->dims.rows * A->dims.depth;
+    unsigned int M = A->dims.cols * A->dims.rows * A->dims.c;
     unsigned int N = B->dims.rows * B->dims.cols;
 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);

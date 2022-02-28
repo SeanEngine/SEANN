@@ -16,13 +16,13 @@ namespace seblas {
     static const unsigned int WARP_SIZE = 32;
 
     struct shape4{
-        unsigned int w{}, depth{}, rows{}, cols{};
+        unsigned int n{}, c{}, rows{}, cols{};
         unsigned int size;
         unsigned int activeDims;
 
         shape4(unsigned int w, unsigned int depth, unsigned int rows, unsigned int cols){
-            this->w = w;
-            this->depth = depth;
+            this->n = w;
+            this->c = depth;
             this->rows = rows;
             this->cols = cols;
             activeDims = 4;
@@ -31,7 +31,7 @@ namespace seblas {
         }
 
         shape4(unsigned int depth, unsigned int rows, unsigned int cols){
-            this->depth = depth;
+            this->c = depth;
             this->rows = rows;
             this->cols = cols;
             activeDims = 3;
@@ -47,7 +47,37 @@ namespace seblas {
             size = cols * rows;
         }
 
+        __device__ shape4(unsigned int w, unsigned int depth, unsigned int rows, unsigned int cols){
+            this->n = w;
+            this->c = depth;
+            this->rows = rows;
+            this->cols = cols;
+            activeDims = 4;
+
+            size = cols * rows * depth * w;
+        }
+
+        __device__ shape4(unsigned int depth, unsigned int rows, unsigned int cols){
+            this->c = depth;
+            this->rows = rows;
+            this->cols = cols;
+            activeDims = 3;
+
+            size = cols * rows * depth;
+        }
+
+        __device__ shape4(unsigned int rows, unsigned int cols){
+            this->rows = rows;
+            this->cols = cols;
+            activeDims = 2;
+
+            size = cols * rows;
+        }
+
+
         bool operator==(shape4 another) const;
+        shape4 operator+(shape4 another) const;
+        __device__ shape4 operator+(shape4 another) const;
 
         void copy(shape4 other);
     };
@@ -66,7 +96,7 @@ namespace seblas {
         [[nodiscard]] __device__ float getD(unsigned int index) const;
         [[nodiscard]] __device__ float getD(unsigned int row, unsigned int col) const;
         [[nodiscard]] __device__ float getD(unsigned int depth, unsigned int row, unsigned int col) const;
-        [[nodiscard]] __device__ float getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col);
+        [[nodiscard]] __device__ float getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
 
         void set(unsigned int index, float val) const;
         void set(unsigned int row, unsigned int col, float val) const;
