@@ -11,17 +11,16 @@ namespace seblas{
     __global__ void extract4D(Tensor* in, Tensor* buffer, shape4 start, shape4 extractRange){
         unsigned int readRow = start.rows + threadIdx.y + blockIdx.y * blockDim.y;
         unsigned int readCol = start.cols + 4*(threadIdx.x + blockIdx.x * blockDim.x);
+        shape4 src = in->dims;
         shape4 out = start + extractRange;
         #pragma unroll
         for(unsigned int n = start.n; n < out.n; n++){
             #pragma unroll
             for(unsigned int c = start.c; c < out.c; c++){
                 if(readRow < extractRange.rows && readCol < extractRange.cols){
-                    toFloat4R(buffer->elements[(n-start.n) * extractRange.c * extractRange.rows * extractRange.cols
-                            + (c-start.c) * extractRange.rows * extractRange.cols
-                            + (readRow-start.rows) * extractRange.rows + (readCol-start.cols)]) = toFloat4R(in->elements[
-                            n * in->dims.c * in->dims.cols * in->dims.rows + c * in->dims.rows * in->dims.cols
-                            + readRow * in->dims.cols + readCol]);
+                    toFloat4R(buffer->elements[extractRange[
+                            shape4(n-start.n,c-start.c,readRow -start.rows, readCol - start.cols)]])
+                    = toFloat4R(in->elements[src[shape4(n,c,readRow,readCol)]]);
                 }
             }
         }

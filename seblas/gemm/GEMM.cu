@@ -28,9 +28,9 @@ __global__ void gemmNaive(Tensor *A, Tensor *B, Tensor *C){
     float value = 0;
     if(row < C->dims.rows && col < C->dims.cols){
         for (int am = 0; am < A->dims.cols; am++) {
-            value += A->getD(row, am) * B->getD(am,col);
+            value += A->get(row, am) * B->get(am,col);
         }
-        C->setD(row,col,value);
+        C->set(value, row, col);
     }
 }
 

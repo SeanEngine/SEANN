@@ -15,9 +15,9 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto* A = Tensor::declare(shape4(64,3,3,3))->create();
-    auto* B = Tensor::declare(shape4(64,224,224))->create()->randomFill();
-    auto* C = Tensor::declare(shape4(3,224,224))->create()->randomFill();
+    auto* A = Tensor::declare(64,3,3,3)->create();
+    auto* B = Tensor::declare(64,224,224)->create()->randomFill();
+    auto* C = Tensor::declare(3,224,224)->create()->randomFill();
 
     convD(A,B,C,1,1,1);
     inspect(C);

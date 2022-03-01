@@ -19,7 +19,7 @@ namespace seio{
         unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
         uchar element = col < dims.cols && row < dims.rows && depth < dims.c
                         ? elements[(row * dims.cols + col)*dims.c + depth] : 0;
-        data->setD(depth, row, col, (float)element * decay);
+        data->set((float)element * decay, depth, row, col);
     }
 
     Tensor* seio::readRGBSquare(const char *path, shape4 dimensions) {

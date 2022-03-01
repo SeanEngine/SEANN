@@ -9,18 +9,21 @@
 #include "cuda.h"
 #include "cuda_runtime_api.h"
 #include "../assist/ErrorHandler.cuh"
+#include "vector"
 
 namespace seblas {
+
+    using namespace std;
 
     const dim3 CUDA_BLOCK_SIZE = dim3(16,16,4);
     static const unsigned int WARP_SIZE = 32;
 
     struct shape4{
-        unsigned int n{}, c{}, rows{}, cols{};
+        unsigned int n=0, c=0, rows=0, cols=0;
         unsigned int size;
         unsigned int activeDims;
 
-        shape4(unsigned int w, unsigned int depth, unsigned int rows, unsigned int cols){
+        __device__ __host__ shape4(unsigned int w, unsigned int depth, unsigned int rows, unsigned int cols){
             this->n = w;
             this->c = depth;
             this->rows = rows;
@@ -30,7 +33,7 @@ namespace seblas {
             size = cols * rows * depth * w;
         }
 
-        shape4(unsigned int depth, unsigned int rows, unsigned int cols){
+        __device__ __host__ shape4(unsigned int depth, unsigned int rows, unsigned int cols){
             this->c = depth;
             this->rows = rows;
             this->cols = cols;
@@ -39,7 +42,7 @@ namespace seblas {
             size = cols * rows * depth;
         }
 
-        shape4(unsigned int rows, unsigned int cols){
+        __device__ __host__ shape4(unsigned int rows, unsigned int cols){
             this->rows = rows;
             this->cols = cols;
             activeDims = 2;
@@ -47,37 +50,11 @@ namespace seblas {
             size = cols * rows;
         }
 
-        __device__ shape4(unsigned int w, unsigned int depth, unsigned int rows, unsigned int cols){
-            this->n = w;
-            this->c = depth;
-            this->rows = rows;
-            this->cols = cols;
-            activeDims = 4;
-
-            size = cols * rows * depth * w;
-        }
-
-        __device__ shape4(unsigned int depth, unsigned int rows, unsigned int cols){
-            this->c = depth;
-            this->rows = rows;
-            this->cols = cols;
-            activeDims = 3;
-
-            size = cols * rows * depth;
-        }
-
-        __device__ shape4(unsigned int rows, unsigned int cols){
-            this->rows = rows;
-            this->cols = cols;
-            activeDims = 2;
-
-            size = cols * rows;
-        }
-
-
-        bool operator==(shape4 another) const;
-        shape4 operator+(shape4 another) const;
-        __device__ shape4 operator+(shape4 another) const;
+        __device__ __host__ bool operator==(shape4 another) const;
+        __device__ __host__ bool operator<(shape4 another) const;
+        __device__ __host__ unsigned int operator[](shape4 indexes) const;
+        __device__ __host__ unsigned int operator[](int index) const;
+        __device__ __host__ shape4 operator+(shape4 another) const;
 
         void copy(shape4 other);
     };
@@ -88,30 +65,41 @@ namespace seblas {
         float* elements{};
 
         ///accessing the elements using a getter
-        [[nodiscard]] float get(unsigned int index) const;
-        [[nodiscard]] float get(unsigned int row, unsigned int col) const;
-        [[nodiscard]] float get(unsigned int depth, unsigned int row, unsigned int col) const;
-        [[nodiscard]] float get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
+        template<typename... Args>
+        __device__ __host__ float get(Args&&... args) {
+            auto location = shape4(std::forward<Args>(args)...);
+            if(!(location < dims)) return 0;
+            return elements[dims[location]];
+        }
 
-        [[nodiscard]] __device__ float getD(unsigned int index) const;
-        [[nodiscard]] __device__ float getD(unsigned int row, unsigned int col) const;
-        [[nodiscard]] __device__ float getD(unsigned int depth, unsigned int row, unsigned int col) const;
-        [[nodiscard]] __device__ float getD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
+        template<typename... Args>
+        __host__ __device__ void set(float value, Args &&... args) {
+            auto location = shape4(std::forward<Args>(args)...);
+            if(!(location < dims)) return;
+            elements[dims[location]] = value;
+        }
 
-        void set(unsigned int index, float val) const;
-        void set(unsigned int row, unsigned int col, float val) const;
-        void set(unsigned int depth, unsigned int row, unsigned int col, float val) const;
-        void set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const;
+        __host__ __device__ void setL(float value, unsigned int index) const {
+            if(index < dims.size) elements[index] = value;
+        }
 
-        __device__ void setD(unsigned int index, float val) const;
-        __device__ void setD(unsigned int row, unsigned int col, float val) const;
-        __device__ void setD(unsigned int depth, unsigned int row, unsigned int col, float val) const;
-        __device__ void setD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float val) const;
-
+        [[nodiscard]] __device__ __host__ float getL(float value, unsigned int index) const {
+            if(index < dims.size) return elements[index];
+            return 0;
+        }
 
         ///declare a tensor without allocating elements
         static Tensor* declare(shape4 shape){
             Tensor* t;
+            cudaMallocHost(&t, sizeof(Tensor));
+            cudaMemcpy(&t->dims, &shape, sizeof(shape4), cudaMemcpyHostToHost);
+            ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
+            return t;
+        }
+        template<typename... Args>
+        static Tensor* declare(Args &&... args){
+            Tensor* t;
+            auto shape = shape4(std::forward<Args>(args)...);
             cudaMallocHost(&t, sizeof(Tensor));
             cudaMemcpy(&t->dims, &shape, sizeof(shape4), cudaMemcpyHostToHost);
             ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
