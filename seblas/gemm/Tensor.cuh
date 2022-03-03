@@ -18,42 +18,55 @@ namespace seblas {
     const dim3 CUDA_BLOCK_SIZE = dim3(16,16,4);
     static const unsigned int WARP_SIZE = 32;
 
-    struct shape4{
+    struct index4{
         unsigned int n=0, c=0, rows=0, cols=0;
+        __device__ __host__ index4(unsigned int n, unsigned int c, unsigned int rows, unsigned int cols){
+            this->n = n;
+            this->c = c;
+            this->rows = rows;
+            this->cols = cols;
+        }
+
+        __device__ __host__ index4(unsigned int c, unsigned int rows, unsigned int cols){
+            this->c = c;
+            this->rows = rows;
+            this->cols = cols;
+        }
+
+        __device__ __host__ index4(unsigned int rows, unsigned int cols){
+            this->rows = rows;
+            this->cols = cols;
+        }
+
+        __device__ __host__ unsigned int operator[](unsigned int in) const;
+        __device__ __host__ unsigned int operator[](index4 indexes) const;
+        __device__ __host__ bool operator<(const index4& other) const;
+        __device__ __host__ index4 operator-(const index4& other) const;
+    };
+
+    struct shape4 : public index4{
         unsigned int size;
         unsigned int activeDims;
 
-        __device__ __host__ shape4(unsigned int w, unsigned int depth, unsigned int rows, unsigned int cols){
-            this->n = w;
-            this->c = depth;
-            this->rows = rows;
-            this->cols = cols;
+        __device__ __host__ shape4(unsigned int n, unsigned int c, unsigned int rows, unsigned int cols)
+        : index4(n,c,rows,cols){
             activeDims = 4;
-
-            size = cols * rows * depth * w;
+            size = cols * rows * rows * cols;
         }
 
-        __device__ __host__ shape4(unsigned int depth, unsigned int rows, unsigned int cols){
-            this->c = depth;
-            this->rows = rows;
-            this->cols = cols;
+        __device__ __host__ shape4(unsigned int c, unsigned int rows, unsigned int cols) :
+                index4(1,c, rows, cols){
             activeDims = 3;
-
-            size = cols * rows * depth;
+            size = cols * rows * c;
         }
 
-        __device__ __host__ shape4(unsigned int rows, unsigned int cols){
-            this->rows = rows;
-            this->cols = cols;
+        __device__ __host__ shape4(unsigned int rows, unsigned int cols) :
+                index4(1,1,rows,cols){
             activeDims = 2;
-
             size = cols * rows;
         }
 
         __device__ __host__ bool operator==(shape4 another) const;
-        __device__ __host__ bool operator<(shape4 another) const;
-        __device__ __host__ unsigned int operator[](shape4 indexes) const;
-        __device__ __host__ unsigned int operator[](int index) const;
         __device__ __host__ shape4 operator+(shape4 another) const;
 
         void copy(shape4 other);
@@ -67,14 +80,14 @@ namespace seblas {
         ///accessing the elements using a getter
         template<typename... Args>
         __device__ __host__ float get(Args&&... args) {
-            auto location = shape4(std::forward<Args>(args)...);
+            auto location = index4(std::forward<Args>(args)...);
             if(!(location < dims)) return 0;
             return elements[dims[location]];
         }
 
         template<typename... Args>
         __host__ __device__ void set(float value, Args &&... args) {
-            auto location = shape4(std::forward<Args>(args)...);
+            auto location = index4(std::forward<Args>(args)...);
             if(!(location < dims)) return;
             elements[dims[location]] = value;
         }

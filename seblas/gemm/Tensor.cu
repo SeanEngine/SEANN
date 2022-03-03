@@ -79,15 +79,6 @@ namespace seblas {
         && activeDims == other.activeDims;
     }
 
-    __device__ __host__ bool shape4::operator<(shape4 other) const {
-        switch(activeDims){
-            case 2: return cols < other.cols && rows < other.rows;
-            case 3: return c < other.c && cols < other.cols && rows < other.rows;
-            case 4: return n < other.n && c < other.c && cols < other.cols && rows < other.rows;
-        }
-        return false;
-    }
-
     void shape4::copy(shape4 other) {
         rows = other.rows;
         cols = other.cols;
@@ -101,11 +92,19 @@ namespace seblas {
         return {another.n + n, another.c + c, another.rows + rows, another.cols + cols};
     }
 
-    __device__ __host__ unsigned int shape4::operator[](shape4 indexes) const {
+    __device__ __host__ unsigned int index4::operator[](index4 indexes) const {
         return indexes.n * c * rows * cols + indexes.c * rows * cols + indexes.rows * cols + indexes.cols;
     }
 
-    __device__ __host__ unsigned int shape4::operator[](int index) const {
+    __device__ __host__ bool index4::operator<(const index4& other) const {
+        return n < other.n && c < other.c && cols < other.cols && rows < other.rows;
+    }
+
+    __device__ __host__ index4 index4::operator-(const index4 &other) const {
+        return {n-other.n, c-other.c, rows-other.rows, cols-other.cols};
+    }
+
+    __device__ __host__ unsigned int index4::operator[](unsigned int index) const {
         switch (index) {
             case 0: return cols;
             case 1: return rows;

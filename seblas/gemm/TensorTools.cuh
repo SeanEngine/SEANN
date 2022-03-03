@@ -6,24 +6,23 @@
 #define SEANN_TENSORTOOLS_CUH
 #include "Tensor.cuh"
 
-
 namespace seblas{
-    enum DimPrefix{
-        DEPTH,
-        ROW,
-        COL,
-    };
 
-    struct range{
-        int a,b;
-        range(int a, int b){
-            this->a = a; this->b = b;
+    struct range4{
+        index4 began;
+        index4 end;
+        index4 diff;
+
+        __device__ __host__ range4(index4 b, index4 e)
+             : began(b), end(e), diff(e-b){
         }
     };
 
-    Tensor* slice(Tensor* in, Tensor* buffer, DimPrefix dim,range dimRange);
+    Tensor* slice(Tensor* in, Tensor* buffer, range4 range);
 
-    Tensor* extract4(Tensor* in, Tensor* buffer, shape4 start, shape4 extractRange);
+    Tensor* extract4(Tensor* in, Tensor* buffer, range4 copyOff);
+
+    Tensor* extract(Tensor* in, Tensor* buffer, range4 copyOff);
 }
 
 
