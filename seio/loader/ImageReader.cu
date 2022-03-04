@@ -22,6 +22,7 @@ namespace seio{
         data->set((float)element * decay, depth, row, col);
     }
 
+    //TODO: Optimize this and prevent any malloc in loops
     Tensor* seio::readRGBSquare(const char *path, shape4 dimensions) {
         auto* output = Tensor::declare(dimensions)->create();
         cv::Mat procImage = cv::imread(path, cv::IMREAD_COLOR);

@@ -735,7 +735,7 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor*B, Tensor*C, int stride, 
             #pragma unroll
             for (int i = 0; i < BLOCK_K; i += readRowStrideB) {
                 int loadIndex = i / readRowStrideB;
-                bufferB[loadIndex] = readRowB + i + nextTileID < K && blockN + readColB < N ?
+                bufferB[loadIndex] = readRowB + i +  nextTileID < K && blockN + readColB < N ?
                                      ptrB[(readRowB + i + nextTileID) * N + readColB] : 0;
             }
         }

@@ -6,23 +6,41 @@
 #define SEANN_TENSORTOOLS_CUH
 #include "Tensor.cuh"
 
-namespace seblas{
+/**
+ * These methods are tools that are crucial for tensor operations
+ * However, they are not performance-consuming and does not need to be
+ * deeply optimized for now
+ *
+ * many of these are used in the Tensor operators
+ * every method ended in D means they are global functions running on device
+ * every method ended in 4 means they use float4 to accelerate memory reading
+ *   *- theses methods needs cols to be a multiple of 4
+ */
+namespace seblas {
 
-    struct range4{
+    struct range4 {
         index4 began;
         index4 end;
         index4 diff;
 
         __device__ __host__ range4(index4 b, index4 e)
-             : began(b), end(e), diff(e-b){
+                : began(b), end(e), diff(e - b) {
         }
     };
 
-    Tensor* slice(Tensor* in, Tensor* buffer, range4 range);
+    //A function I learned from numpy
+    //using memcpy to move entire dimensions of a matrix to another
+    Tensor *slice(Tensor *in, Tensor *buffer, range4 range);
 
-    Tensor* extract4(Tensor* in, Tensor* buffer, range4 copyOff);
+    Tensor *add(Tensor *in, Tensor *other);
 
-    Tensor* extract(Tensor* in, Tensor* buffer, range4 copyOff);
+    Tensor *subtract(Tensor *in, Tensor *other);
+
+    Tensor *hadamardProduct(Tensor *in, Tensor *other);
+
+    Tensor *constProduct(Tensor *in, float val);
+
+    Tensor *transpose(Tensor *in, Tensor *out);
 }
 
 

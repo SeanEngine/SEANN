@@ -29,9 +29,7 @@ void seblas::inspect(Tensor *A) {
         for (int depth0 = 0; depth0 < debug->dims.c; depth0++) {
             for (int row0 = 0; row0 < debug->dims.rows; row0++) {
                 for (int col0 = 0; col0 < debug->dims.cols; col0++) {
-                    cout << debug->elements[depth0 * debug->dims.rows * debug->dims.cols
-                    + row0 * debug->dims.cols + col0] << " ";
-                    //cout << debug->get(depth0, row0, col0) << " ";
+                    cout << debug->get(depth0, row0, col0) << " ";
                 }
                 cout << endl;
             }
