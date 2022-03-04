@@ -607,9 +607,207 @@ __global__ void gemmPrefetching4NN(Tensor *A, Tensor *B, Tensor *C) {
     }
 }
 
+/**
+ * The first matrix is transposed before computation
+ * @tparam BLOCK_M
+ * @tparam BLOCK_N
+ * @tparam BLOCK_K
+ * @tparam REGIS_M
+ * @tparam REGIS_N
+ * @param A
+ * @param B
+ * @param C
+ */
 template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
-__global__ void gemmImplicit3D(Tensor* A, Tensor* B, Tensor* C, int stride, int padH, int padW){
+__global__ void gemmPrefetching4TN(Tensor *A, Tensor *B, Tensor *C){
+    const unsigned int M = A->dims.cols;
+    const unsigned int N = B->dims.cols;
+    const unsigned int K = A->dims.rows;
+
+    ///allocate smems and registers
+    //The shared memory tile
+    __shared__ float tileA[2][BLOCK_K][BLOCK_M];  //transposed
+    __shared__ float tileB[2][BLOCK_K][BLOCK_N];
+
+    float regisA[2][REGIS_M];
+    float regisB[2][REGIS_N];
+    float regisC[REGIS_M][REGIS_N] = {0};
+
+    const int threadDimX = BLOCK_N / REGIS_N;
+    const int threadDimY = BLOCK_M / REGIS_M;
+    const int threadCount = threadDimX * threadDimY;
+    const int tid = threadIdx.y * threadDimX + threadIdx.x;
+
+    ///register for buffering elements during transporting global to shared mem
+    float bufferA[BLOCK_M * BLOCK_K / threadCount] = {0};
+    float bufferB[BLOCK_N * BLOCK_K / threadCount] = {0};
+
+    ///prepare configs for reading global
+    float* ptrA = A->elements;
+    float* ptrB = B->elements;
+    const int blockM = blockIdx.y * BLOCK_M;
+    const int blockN = blockIdx.x * BLOCK_N;
+
+    const int readThreadPerRowA = BLOCK_M / 4;
+    const int readThreadPerRowB = BLOCK_N / 4;
+
+    //the location each thread should be reading relative to smem
+    const int readRowA = tid / readThreadPerRowA;
+    const int readColA = tid % readThreadPerRowA * 4;
+
+    const int readRowB = tid / readThreadPerRowB;
+    const int readColB = tid % readThreadPerRowB * 4;
+
+    //these values are used to determine the amount of rows to jump
+    //if there is the need to do read multiple times
+    const int readRowStrideA = threadCount / readThreadPerRowA;
+    const int readRowStrideB = threadCount / readThreadPerRowB;
+
+    #pragma unroll
+    for(int i=0; i<BLOCK_K; i+= readRowStrideA){
+        if(readRowA + i < K && blockM + readColA < M){
+            //The mat A is not transposed since it will be transposed in smem
+            toFloat4R(tileA[0][readRowA+i][readColA]) = toFloat4R(ptrA[(readRowA+i)*M + blockM + readColA]);
+        }
+    }
+
+    #pragma unroll
+    for(int i=0; i<BLOCK_K; i+= readRowStrideB){
+        if(readRowB + i< K && blockN + readColB < N){
+            toFloat4R(tileB[0][readRowB+i][readColB]) = toFloat4R(ptrB[(readRowB + i)*N + blockN + readColB]);
+        }
+    }
+    __syncthreads();
+
+    #pragma unroll
+    for(int rm = 0; rm < REGIS_M; rm += 4){
+        toFloat4R(regisA[0][rm]) = toFloat4R(tileA[0][0][REGIS_M * threadIdx.y + rm]);
+    }
+
+    #pragma unroll
+    for(int rn = 0; rn < REGIS_N; rn += 4){
+        toFloat4R(regisB[0][rn]) = toFloat4R(tileB[0][0][REGIS_N * threadIdx.x + rn]);
+    }
+
+
+    ///main loop
+    int writeStageFlag = 1;
+    #pragma unroll
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+        //prefetch
+        if (nextTileID < K) {
+            #pragma unroll
+            for (int i = 0; i < BLOCK_K; i += readRowStrideA) {
+                int loadIndex = i / readRowStrideA * 4;
+                //here the mat A is automatially transposed while reading
+                if(readRowA + i + nextTileID < K && blockM + readColA < M ){
+                    toFloat4R(bufferA[loadIndex]) = toFloat4R(
+                            ptrA[(readRowA + i + nextTileID) * M + blockM + readColA]);
+                }else{
+                    bufferA[loadIndex] = 0;
+                    bufferA[loadIndex + 1] = 0;
+                    bufferA[loadIndex + 2] = 0;
+                    bufferA[loadIndex + 3] = 0;
+                }
+            }
+
+            #pragma unroll
+            for (int i = 0; i < BLOCK_K; i += readRowStrideB) {
+                int loadIndex = i / readRowStrideB * 4;
+                if(readRowB + i +  nextTileID < K && blockN + readColB < N){
+                    toFloat4R(bufferB[loadIndex]) = toFloat4R(
+                            ptrB[(readRowB + i + nextTileID) * N + blockN + readColB]);
+                }else{
+                    bufferB[loadIndex] = 0;
+                    bufferB[loadIndex + 1] = 0;
+                    bufferB[loadIndex + 2] = 0;
+                    bufferB[loadIndex + 3] = 0;
+                }
+            }
+        }
+
+        int nextStageFlag = writeStageFlag ^ 1;
+
+        //compute the part that is already in the registers and load the next segment
+        #pragma unroll
+        for (int i = 0; i < BLOCK_K - 1; i++) {
+
+            #pragma unroll
+            for (int rm = 0; rm < REGIS_M; rm += 4) {
+                toFloat4R(regisA[(i + 1) % 2][rm]) = toFloat4R(
+                        tileA[nextStageFlag][i + 1][REGIS_M * threadIdx.y + rm]);
+            }
+
+            #pragma unroll
+            for (int rn = 0; rn < REGIS_N; rn += 4) {
+                toFloat4R(regisB[(i + 1) % 2][rn]) = toFloat4R(
+                        tileB[nextStageFlag][i + 1][REGIS_N * threadIdx.x + rn]);
+            }
+
+            #pragma unroll
+            for (int rm = 0; rm < REGIS_M; rm++) {
+                #pragma unroll
+                for (int rn = 0; rn < REGIS_N; rn++) {
+                    regisC[rm][rn] += regisA[i % 2][rm] * regisB[i % 2][rn];
+                }
+            }
+        }
+
+        //load the data in the register buffers to tiles
+        if (nextTileID < K) {
+            #pragma unroll
+            for (int i = 0; i < BLOCK_K; i += readRowStrideA) {
+                int loadIndex = i / readRowStrideA * 4;
+                toFloat4R(tileA[writeStageFlag][readRowA + i][readColA]) = toFloat4R(bufferA[loadIndex]);
+            }
+
+            #pragma unroll
+            for (int i = 0; i < BLOCK_K; i += readRowStrideB) {
+                int loadIndex = i / readRowStrideB * 4;
+                toFloat4R(tileB[writeStageFlag][readRowB + i][readColB]) = toFloat4R(bufferB[loadIndex]);
+            }
+
+            __syncthreads();
+            writeStageFlag ^= 1;  //switch
+        }
+        #pragma unroll
+        for (int rm = 0; rm < REGIS_M; rm += 4) {
+            toFloat4R(regisA[0][rm]) = toFloat4R(
+                    tileA[nextStageFlag ^ 1][0][REGIS_M * threadIdx.y + rm]);
+        }
+
+        #pragma unroll
+        for (int rn = 0; rn < REGIS_N; rn += 4) {
+            toFloat4R(regisB[0][rn]) = toFloat4R(
+                    tileB[nextStageFlag ^ 1][0][REGIS_N * threadIdx.x + rn]);
+        }
+
+        #pragma unroll
+        for(int rm = 0; rm < REGIS_M; rm ++){
+            #pragma unroll
+            for(int rn = 0; rn < REGIS_N; rn ++){
+                regisC[rm][rn] += regisA[1][rm] * regisB[1][rn];
+            }
+        }
+    }
+
+    #pragma unroll
+    for(int rm = 0; rm < REGIS_M; rm ++){
+        #pragma unroll
+        for(int rn = 0; rn < REGIS_N; rn += 4){
+            if((blockM + threadIdx.y * REGIS_M + rm < M && blockN + threadIdx.x * REGIS_N + rn < N)) {
+                toFloat4R(C[(blockM + threadIdx.y * REGIS_M + rm) * N + blockN + threadIdx.x * REGIS_N + rn])
+                = toFloat4R(regisC[rm][rn]);
+            }
+        }
+    }
+}
+
+
+template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
+        const int REGIS_M, const int REGIS_N>
+__global__ void gemmImplicit(Tensor* A, Tensor* B, Tensor* C, int stride, int padH, int padW){
 
     // MatA: OC, IC * FH * FW; MatB: IC * FH * FW, OH * OW; Mat C: OC, OH * OW
     ///insert parameters
@@ -1022,7 +1220,7 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int stride, int padH, int 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
 
-    gemmImplicit3D<BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C, stride, padH, padW);
+    gemmImplicit<BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C, stride, padH, padW);
     cudaDeviceSynchronize();
     ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
     return C;
@@ -1080,7 +1278,11 @@ Tensor* seblas::sgemmTN(Tensor *A, Tensor *B, Tensor *C) {
     dim3 grid = dim3((C->dims.cols + BN - 1) / BN, (C->dims.rows + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
 
-    gemmPrefetchingTN <BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C);
+    if(A->dims.cols%4==0 && B->dims.cols%4==0){
+        gemmPrefetching4TN <BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C);
+    } else {
+        gemmPrefetchingTN<BM, BN, BK, RM, RN><<<grid, block>>>(A,B,C);
+    }
     cudaDeviceSynchronize();
     ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
     return C;
