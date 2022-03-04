@@ -10,8 +10,9 @@
 namespace seblas {
     Tensor* sgemmNaive(Tensor* A, Tensor* B, Tensor* C);
     Tensor* sgemm(Tensor* A, Tensor* B, Tensor* C);
+    Tensor* sgemmTN(Tensor* A, Tensor* B, Tensor* C);
     Tensor* conv(Tensor* A, Tensor* B, Tensor* C, int stride, int padH, int padW);
-    Tensor* convD(Tensor* A, Tensor* B, Tensor* C, int stride, int padH, int padW);
+    Tensor* convDeriv(Tensor* A, Tensor* B, Tensor* C, int stride, int padH, int padW);
 }
 
 #endif //SEANN_GEMM_CUH

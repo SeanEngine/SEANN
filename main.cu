@@ -17,9 +17,10 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto* A = Tensor::declare(24,12)->create()->randomFill();
-    auto* B = Tensor::declare(12,24)->create();
+     auto* A = Tensor::declare(3,1,3,3)->create()->randomFill();
+     auto* B = Tensor::declare(3,32,32)->create()->randomFill();
+     auto* C = Tensor::declare(1,32,32)->create();
 
-    transpose(A,B);
-    inspect(B);
+     convDeriv(A,B,C,1,1,1);
+     inspect(C);
 }

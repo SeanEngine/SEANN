@@ -147,6 +147,11 @@ namespace seblas {
         ///automatic reshape the tensor (as long as the element size remains the same)
         //this will only change the way our program understands the object
         Tensor* reshape(shape4 newDims);
+
+        Tensor* operator+(Tensor* other);
+        Tensor* operator-(Tensor* other);
+        Tensor* operator*(Tensor* other);
+        Tensor* operator*(float val);
     };
 
     static void copyD2H(Tensor* onDevice, Tensor* onHost){

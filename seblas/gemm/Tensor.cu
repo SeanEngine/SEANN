@@ -8,6 +8,7 @@
 #include <cassert>
 #include <curand.h>
 #include <curand_kernel.h>
+#include "TensorTools.cuh"
 #include <windows.h>
 
 namespace seblas {
@@ -112,5 +113,21 @@ namespace seblas {
             case 3: return n;
             default: return 0;
         }
+    }
+
+    Tensor *Tensor::operator+(Tensor *other) {
+        return add(this, other);
+    }
+
+    Tensor *Tensor::operator-(Tensor *other) {
+        return subtract(this, other);
+    }
+
+    Tensor *Tensor::operator*(Tensor *other) {
+        return hadamardProduct(this, other);
+    }
+
+    Tensor *Tensor::operator*(float val) {
+        return constProduct(this, val);
     }
 }
