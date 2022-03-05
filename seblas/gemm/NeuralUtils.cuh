@@ -11,6 +11,9 @@
  * This code segment is account for activation functions
  */
 namespace seblas {
+
+    const unsigned int BLOCK_WARP = 8;
+
     Tensor* relu(Tensor* input);
     Tensor* reluDerive(Tensor* input);
 
@@ -22,6 +25,8 @@ namespace seblas {
 
     Tensor* tanh(Tensor* input);
     Tensor* tanhDerive(Tensor* input);
+
+    float reduce(Tensor* input, float* buffer);
 
     Tensor* softmax(Tensor* input);
     Tensor* softmaxDerive(Tensor* input, Tensor* target);

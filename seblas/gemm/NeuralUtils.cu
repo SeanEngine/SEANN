@@ -3,12 +3,22 @@
 //
 
 #include "NeuralUtils.cuh"
+#include "../assist/DBGTools.cuh"
+
 #define toFloat4R(ptr) (reinterpret_cast<float4*>(&(ptr))[0])
 #define sigmoidCalc(x) (1.0f / (1.0f + expf(-x)))
 #define tanhCalc(x) (expf(x) - expf(-x) / (expf(x) + expf(-x)))
 #define topOff(a,b) (a + b - 1)/b
 
 namespace seblas{
+
+    __device__ __forceinline__ float warpReduce(float val){
+        #pragma unroll
+        for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
+            val += __shfl_xor_sync(0x1, val, mask);
+        }
+        return val;
+    }
 
     __global__ void reluD(Tensor* input){
         unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -175,6 +185,31 @@ namespace seblas{
             toFloat4R(input->elements[idx]) = toFloat4R(regis[0]);
         }
     }
+    template <const unsigned int BLOCK_WARPS>
+    __global__ void reduceD(const float* input, float* buffer, unsigned int procSize){
+        //loading data
+        //each thread loads 2 elements
+        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        unsigned int tid = threadIdx.x;
+
+        //warp reduction
+        __shared__ float warpCache[BLOCK_WARPS];
+        unsigned const int warpId = tid / WARP_SIZE;
+        unsigned const int laneId = tid % WARP_SIZE;
+        float sum = idx < procSize ? input[idx] : 0.0f;
+        __syncthreads();
+
+        sum = warpReduce(sum);
+        if(laneId==0) warpCache[warpId] = sum;
+
+        __syncthreads();
+
+        if(warpId==0){
+            sum = laneId < BLOCK_WARPS ? warpCache[laneId] : 0.0f;
+            sum = warpReduce(sum);
+            if(laneId==0) buffer[blockIdx.x] = sum;
+        }
+    }
 
     Tensor* relu(Tensor* input){
         unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
@@ -286,5 +321,25 @@ namespace seblas{
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
         return input;
+    }
+
+    float reduce(Tensor* input, float* buffer){
+        float* source = input->elements;
+        unsigned int procSize = input->dims.size;
+        unsigned int block = BLOCK_WARP * WARP_SIZE;
+
+        while(procSize > 1){
+            unsigned int grid = topOff(procSize, block);
+            reduceD<BLOCK_WARP><<<grid,block>>>(source, buffer, procSize);
+            cudaDeviceSynchronize();
+            ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+            procSize = grid;
+            source = buffer;
+        }
+
+        float result = 0;
+        cudaMemcpy(&result, buffer, sizeof(float), cudaMemcpyDeviceToHost);
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return result;
     }
 }
