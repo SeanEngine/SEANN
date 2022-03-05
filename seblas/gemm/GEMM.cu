@@ -3,10 +3,8 @@
 //
 
 #include <cassert>
-#include <iostream>
 #include "GEMM.cuh"
 #include "mma.h"
-#include "../assist/DBGTools.cuh"
 
 using namespace seblas;
 using namespace nvcuda;

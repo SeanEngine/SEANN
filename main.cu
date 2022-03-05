@@ -17,8 +17,9 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-     auto* A = Tensor::declare(3,1,3,3)->create()->randomFill();
-     auto* B = Tensor::declare(3,32,32)->create()->randomFill();
+     auto* A = Tensor::declare(3,1,3,3)->create()->constFill(1);
+     auto* B = readRGBSquare(R"(C:\Users\DanielSun\Desktop\resources\MLDatasets\validation\convTest2.png)",
+                             shape4(3,32,32));
      auto* C = Tensor::declare(1,32,32)->create();
 
      convDeriv(A,B,C,1,1,1);
