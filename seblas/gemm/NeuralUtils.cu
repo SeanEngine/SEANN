@@ -368,6 +368,76 @@ namespace seblas{
         }
     }
 
+    template <const unsigned int BLOCK_WARPS>
+    __global__ void findMaxD(const float* input, float* buffer, unsigned int procSize){
+        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        unsigned int tid = threadIdx.x;
+
+        __shared__ float warpCache[BLOCK_WARPS];
+        unsigned const int warpId = tid / WARP_SIZE;
+        unsigned const int laneId = tid % WARP_SIZE;
+
+        float value = idx < procSize ? input[idx] : 0.0f;
+        float max = value;
+        __syncthreads();
+
+        max = warpCompare(max);
+        if(laneId==0) warpCache[warpId] = max;
+
+        __syncthreads();
+
+        //final compare
+        if(warpId==0){
+            max = laneId < BLOCK_WARPS ? warpCache[laneId] : 0.0f;
+            max = warpCompare(max);
+            if(laneId==0) warpCache[0] = max;
+        }
+        __syncthreads();
+
+        if(idx < procSize) buffer[idx] = max;
+    }
+
+    template <const unsigned int BLOCK_WARPS>
+    __global__ void softmaxReduceD(float* output, float* buffer, const float* maxBuf, unsigned int procSize){
+        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        unsigned int tid = threadIdx.x;
+
+        float max = maxBuf[0];
+        //warp reduction
+        __shared__ float warpCache[BLOCK_WARPS];
+        unsigned const int warpId = tid / WARP_SIZE;
+        unsigned const int laneId = tid % WARP_SIZE;
+        float sum = idx < procSize ? output[idx] : 0.0f;
+        __syncthreads();
+
+        sum = warpReduce(sum);
+        if(laneId==0) warpCache[warpId] = sum;
+
+        __syncthreads();
+
+        if(warpId==0){
+            sum = laneId < BLOCK_WARPS ? warpCache[laneId] : 0.0f;
+            sum = warpReduce(sum);
+            if(laneId==0){
+                buffer[blockIdx.x] = sum;
+            }
+        }
+    }
+
+    __global__ void softmaxAssignD(const float* input, float* output, const float* maxBuf, unsigned int procSize){
+        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if(idx < procSize){
+            output[idx] = exp(input[idx] - maxBuf[0]);
+        }
+    }
+
+    __global__ void softmaxResultD(float* output, const float* sumBuf, unsigned int procSize){
+        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if(idx < procSize){
+            output[idx] = output[idx] / sumBuf[0];
+        }
+    }
+
     Tensor* relu(Tensor* input, Tensor* output){
         unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
         unsigned int grid = topOff(input->dims.size, block);
@@ -519,6 +589,7 @@ namespace seblas{
                 ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
                 return out;
             }
+            //TODO: Add general softmax with float4 optimization
         }
 
         if(procSize <= 1024){
@@ -528,6 +599,50 @@ namespace seblas{
             ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
             return out;
         }
+
+        unsigned int grid = topOff(procSize, block);
+        float* maxBuf, *sumBuf;
+        cudaMalloc(&maxBuf, sizeof(float) * grid);
+        cudaMalloc(&sumBuf, sizeof(float) * grid);
+
+        auto* maxBufT  = Tensor::declare(1,2);
+        maxBufT->elements = sumBuf;
+
+        unsigned int maxProc = procSize;
+        float* op = source;
+        while (maxProc > 1) {
+            grid = topOff(maxProc, block);
+            findMaxD<SOFTMAX_WARP><<<grid, block>>>(op, maxBuf, maxProc);
+            cudaDeviceSynchronize();
+            ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+            maxProc = grid;
+            op = maxBuf;
+        }
+
+        grid = topOff(procSize, block);
+        softmaxAssignD<<<grid,block>>>(input->elements, out->elements, maxBuf, procSize);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+
+        unsigned int sumProc = procSize;
+        op = out->elements;
+        while (sumProc > 1) {
+            grid = topOff(sumProc, block);
+            softmaxReduceD<SOFTMAX_WARP><<<grid, block>>>(op, sumBuf, maxBuf, sumProc);
+            cudaDeviceSynchronize();
+            ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+            sumProc = grid;
+            inspect(maxBufT);
+            op = sumBuf;
+        }
+
+        grid = topOff(procSize, block);
+        softmaxResultD<<<grid,block>>>(out->elements, sumBuf, procSize);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+
+        cudaFree(maxBuf);
+        cudaFree(sumBuf);
 
         return out;
     }

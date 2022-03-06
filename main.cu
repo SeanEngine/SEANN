@@ -18,7 +18,7 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-     auto* A = Tensor::declare(1,33)->create()->constFill(4);
-     auto* B = Tensor::declare(1,33)->create();
+     auto* A = Tensor::declare(1,1025)->create()->constFill(4);
+     auto* B = Tensor::declare(1,1025)->create();
     inspect(softmax(A, B));
 }
