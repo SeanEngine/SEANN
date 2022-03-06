@@ -18,8 +18,7 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-     auto* A = Tensor::declare(1,512)->create()->constFill(2);
-     float* buffer;
-     cudaMalloc(&buffer, sizeof(float)*4);
-     cout<<reduce(A,buffer)<<endl;
+     auto* A = Tensor::declare(1,33)->create()->constFill(4);
+     auto* B = Tensor::declare(1,33)->create();
+    inspect(softmax(A, B));
 }

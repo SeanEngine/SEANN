@@ -12,23 +12,24 @@
  */
 namespace seblas {
 
-    const unsigned int BLOCK_WARP = 8;
+    const unsigned int REDUCE_WARP = 8;
+    const unsigned int SOFTMAX_WARP = 32;
 
-    Tensor* relu(Tensor* input);
+    Tensor* relu(Tensor* input, Tensor* output);
     Tensor* reluDerive(Tensor* input);
 
-    Tensor* leakyRelu(Tensor* input, float alpha);
+    Tensor* leakyRelu(Tensor* input, Tensor* output, float alpha);
     Tensor* leakyReluDerive(Tensor* input, float alpha);
 
-    Tensor* sigmoid(Tensor* input);
+    Tensor* sigmoid(Tensor* input, Tensor* output);
     Tensor* sigmoidDerive(Tensor* input);
 
-    Tensor* tanh(Tensor* input);
+    Tensor* tanh(Tensor* input, Tensor* output);
     Tensor* tanhDerive(Tensor* input);
 
     float reduce(Tensor* input, float* buffer);
 
-    Tensor* softmax(Tensor* input);
+    Tensor* softmax(Tensor* input, Tensor* output);
     Tensor* softmaxDerive(Tensor* input, Tensor* target);
 }
 
