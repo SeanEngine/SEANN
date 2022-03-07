@@ -398,11 +398,10 @@ namespace seblas{
     }
 
     template <const unsigned int BLOCK_WARPS>
-    __global__ void softmaxReduceD(float* output, float* buffer, const float* maxBuf, unsigned int procSize){
+    __global__ void softmaxReduceD(const float* output, float* buffer, const float* maxBuf, unsigned int procSize){
         unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
         unsigned int tid = threadIdx.x;
 
-        float max = maxBuf[0];
         //warp reduction
         __shared__ float warpCache[BLOCK_WARPS];
         unsigned const int warpId = tid / WARP_SIZE;
@@ -435,6 +434,28 @@ namespace seblas{
         unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if(idx < procSize){
             output[idx] = output[idx] / sumBuf[0];
+        }
+    }
+
+    __global__ void softmaxDeriveD(Tensor* input, Tensor* correct){
+        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if(idx < input->dims.size){
+            input->elements[idx] = input->elements[idx] - correct->elements[idx];
+        }
+    }
+
+    __global__ void softmaxDerive4D(Tensor* input, Tensor* correct){
+        unsigned int idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+        float regisP[4];
+        float regisC[4];
+        if(idx < input->dims.size){
+            toFloat4R(regisP[0]) = toFloat4R(input->elements[idx]);
+            toFloat4R(regisC[0]) = toFloat4R(correct->elements[idx]);
+            regisP[0] = regisP[0] - regisC[0];
+            regisP[1] = regisP[1] - regisC[1];
+            regisP[2] = regisP[2] - regisC[2];
+            regisP[3] = regisP[3] - regisC[3];
+            toFloat4R(input->elements[idx]) = toFloat4R(regisP[0]);
         }
     }
 
@@ -645,5 +666,21 @@ namespace seblas{
         cudaFree(sumBuf);
 
         return out;
+    }
+
+    Tensor* softmaxDerive(Tensor* input, Tensor* correct) {
+        assert(input->dims.size == correct->dims.size);
+        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        unsigned int grid = topOff(input->dims.size, block);
+
+        if(input->dims.size % 4 == 0){
+            grid = topOff(input->dims.size, block * 4);
+            softmaxDerive4D<<<grid,block>>>(input, correct);
+        }else{
+            softmaxDeriveD<<<grid,block>>>(input, correct);
+        }
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return input;
     }
 }
