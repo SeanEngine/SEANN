@@ -7,8 +7,8 @@
 #define toFloat4R(ptr) (reinterpret_cast<float4*>(&(ptr))[0])
 #define CUDA_BLOCK_SIZE_1D CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y
 #define topOff(a,b) (a + b - 1)/b
-#define RM 8
-#define RN 8
+#define RM 4
+#define RN 4
 
 namespace seblas{
 
@@ -51,26 +51,26 @@ namespace seblas{
         }
     }
 
-    __global__ void subtractD(Tensor* in, Tensor* other){
+    __global__ void subtractD(Tensor* A, Tensor* B, Tensor* C){
         unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-        if(index < in->dims.size){
-            in->elements[index] -= other->elements[index];
+        if(index < A->dims.size){
+            C->elements[index] = B->elements[index] - A->elements[index];
         }
     }
 
-    __global__ void subtract4D(Tensor* in, Tensor* other){
+    __global__ void subtract4D(Tensor* A, Tensor* B, Tensor* C){
         unsigned int index = (threadIdx.x + blockIdx.x * blockDim.x )* 4;
         float regisA[4];
         float regisB[4];
         float regisC[4] = {0};
-        if(index < in->dims.size){
-            toFloat4R(regisA[0]) = toFloat4R(in->elements[index]);
-            toFloat4R(regisB[0]) = toFloat4R(other->elements[index]);
+        if(index < A->dims.size){
+            toFloat4R(regisA[0]) = toFloat4R(A->elements[index]);
+            toFloat4R(regisB[0]) = toFloat4R(B->elements[index]);
             #pragma unroll
             for (int i = 0; i < 4; i++){
                 regisC[i] = regisA[i] - regisB[i];
             }
-            toFloat4R(in->elements[index]) = toFloat4R(regisC[0]);
+            toFloat4R(C->elements[index]) = toFloat4R(regisC[0]);
         }
     }
 
@@ -118,63 +118,12 @@ namespace seblas{
         }
     }
 
-    template<const int REGIS_M, const int REGIS_N>
     __global__ void transposeD(Tensor* in, Tensor* out){
-        unsigned int M = in->dims.rows;
-        unsigned int N = in->dims.cols;
-        unsigned int procRow = (threadIdx.y + blockIdx.y * blockDim.y) * REGIS_M;
-        unsigned int procCol = (threadIdx.x + blockIdx.x * blockDim.x) * REGIS_N;
-        float regisB[REGIS_N][REGIS_M] = {0};
-        if(procCol >= N || procRow >= M) return;
-        int innerLoop = procCol + REGIS_N < N ? REGIS_N : N - procCol;
+        unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+        unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
 
-        #pragma unroll
-        for(int i = 0; i<REGIS_M; i++){
-            #pragma unroll
-            for(int j = 0; j<innerLoop; j++){
-                regisB[j][i] = in->elements[(procRow + i)*N + procCol+j];
-            }
-        }
-
-        #pragma unroll
-        for(int i = 0; i<innerLoop; i++){
-            #pragma unroll
-            for (int j = 0; j<REGIS_M; j++){
-                out->elements[(procCol+i)*M + procRow + j] = regisB[i][j];
-            }
-        }
-    }
-
-    //fast transpose
-    template<const int REGIS_M, const int REGIS_N>
-    __global__ void transpose4D(Tensor* in, Tensor* out){
-        unsigned int M = in->dims.rows;
-        unsigned int N = in->dims.cols;
-        unsigned int procRow = (threadIdx.y + blockIdx.y * blockDim.y) * REGIS_M;
-        unsigned int procCol = (threadIdx.x + blockIdx.x * blockDim.x) * REGIS_N;
-        float regisB[REGIS_N][REGIS_M] = {0};
-        float row[4];
-        if(procCol >= N || procRow >= M) return;
-        int innerLoop = procCol + REGIS_N < N ? REGIS_N : N - procCol;
-
-        #pragma unroll
-        for(int i = 0; i<REGIS_M; i++){
-            #pragma unroll
-            for(int j = 0; j<innerLoop; j+=4){
-                toFloat4R(row[0]) = toFloat4R(in->elements[(procRow + i)*N + procCol+j]);
-                regisB[j][i] = row[0];
-                regisB[j+1][i] = row[1];
-                regisB[j+2][i] = row[2];
-                regisB[j+3][i] = row[3];
-            }
-        }
-
-        #pragma unroll
-        for(int i = 0; i<innerLoop; i++){
-            #pragma unroll
-            for (int j = 0; j<REGIS_M; j+=4){
-                toFloat4R(out->elements[(procCol+i)*M + procRow + j]) = toFloat4R(regisB[i][j]);
-            }
+        if(row < in->dims.rows && col < in->dims.cols){
+            out->elements[col*in->dims.rows + row] = in->elements[row*in->dims.cols + col];
         }
     }
 
@@ -197,23 +146,28 @@ namespace seblas{
         return in;
     }
 
-    Tensor* subtract(Tensor *in, Tensor *other){
-        assert(in->dims.size == other->dims.size);
+    Tensor* subtract(Tensor* A, Tensor* B, Tensor* C){
+        assert(A->dims.size == B->dims.size == C->dims.size);
         unsigned int block = CUDA_BLOCK_SIZE_1D;
-        unsigned int grid = topOff(in->dims.size, block);
+        unsigned int grid = topOff(A->dims.size, block);
 
-        if(in->dims.size %4 == 0){
-            grid = topOff(in->dims.size, block * 4);
-            subtract4D<<<grid,block>>>(in,other);
+        if(A->dims.size %4 == 0){
+            grid = topOff(A->dims.size, block * 4);
+            subtract4D<<<grid,block>>>(A,B,C);
             cudaDeviceSynchronize();
             ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-            return in;
+            return C;
         }
 
-        subtractD<<<grid, block>>>(in,other);
+        subtractD<<<grid, block>>>(A,B,C);
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-        return in;
+        return C;
+    }
+
+    Tensor* subtract(Tensor* in, Tensor* other){
+        assert(in->dims.size == other->dims.size);
+        return subtract(in, other, in);
     }
 
     Tensor* hadamardProduct(Tensor* in, Tensor* other){
@@ -253,20 +207,16 @@ namespace seblas{
         return in;
     }
 
+    //I'm tired of optimizing this
+    //who fucking cares about transpose performance
     Tensor *transpose(Tensor* in, Tensor* out){
         assert(in->dims.activeDims==2);
         assert(in->dims.cols == out->dims.rows);
         assert(in->dims.size == out->dims.size);
         dim3 block = CUDA_BLOCK_SIZE;
-        dim3 grid = dim3(topOff(in->dims.cols,block.x * RN),
-                topOff(in->dims.rows,block.y * RM));
-        if(in->dims.rows % 4 == 0 && in->dims.cols % 4 == 0){
-            transpose4D<RM,RN><<<grid, block>>>(in,out);
-            cudaDeviceSynchronize();
-            ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-            return out;
-        }
-        transposeD<RM,RN><<<grid, block>>>(in,out);
+        dim3 grid = dim3(topOff(in->dims.cols,block.x),
+                topOff(in->dims.rows,block.y));
+        transposeD<<<grid,block>>>(in,out);
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
         return out;

@@ -36,6 +36,8 @@ namespace seblas {
 
     Tensor *subtract(Tensor *in, Tensor *other);
 
+    Tensor *subtract(Tensor *A, Tensor* B, Tensor *C);
+
     Tensor *hadamardProduct(Tensor *in, Tensor *other);
 
     Tensor *constProduct(Tensor *in, float val);

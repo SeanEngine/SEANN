@@ -30,7 +30,9 @@ namespace seblas {
     float reduce(Tensor* input, float* buffer);
 
     Tensor* softmax(Tensor* input, Tensor* output);
-    Tensor* softmaxDerive(Tensor* input, Tensor* target);
+
+    //CE -> Cross Entropy, Uses only as the output layer
+    Tensor* softmaxDeriveCE(Tensor* input, Tensor* target);
 }
 
 #endif //SEANN_NEURALUTILS_CUH

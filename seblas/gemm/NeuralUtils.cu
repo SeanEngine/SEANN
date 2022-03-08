@@ -398,7 +398,7 @@ namespace seblas{
     }
 
     template <const unsigned int BLOCK_WARPS>
-    __global__ void softmaxReduceD(const float* output, float* buffer, const float* maxBuf, unsigned int procSize){
+    __global__ void softmaxReduceD(const float* output, float* buffer, unsigned int procSize){
         unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
         unsigned int tid = threadIdx.x;
 
@@ -649,7 +649,7 @@ namespace seblas{
         op = out->elements;
         while (sumProc > 1) {
             grid = topOff(sumProc, block);
-            softmaxReduceD<SOFTMAX_WARP><<<grid, block>>>(op, sumBuf, maxBuf, sumProc);
+            softmaxReduceD<SOFTMAX_WARP><<<grid, block>>>(op, sumBuf, sumProc);
             cudaDeviceSynchronize();
             ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
             sumProc = grid;
@@ -668,7 +668,8 @@ namespace seblas{
         return out;
     }
 
-    Tensor* softmaxDerive(Tensor* input, Tensor* correct) {
+    //CE -> Cross Entropy, Uses only as the output layer
+    Tensor* softmaxDeriveCE(Tensor* input, Tensor* correct) {
         assert(input->dims.size == correct->dims.size);
         unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
         unsigned int grid = topOff(input->dims.size, block);
