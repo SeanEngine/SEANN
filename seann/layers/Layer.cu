@@ -4,6 +4,16 @@
 
 #include "Layer.cuh"
 
-void Layer::bind(Layer *pLayer) {
+Layer* Layer::bind(Layer *pLayer) {
     this->prev = pLayer;
+    return this;
 }
+
+void Layer::forward() {
+    forward(prev);
+}
+
+void Layer::backward() {
+    backward(prev);
+}
+

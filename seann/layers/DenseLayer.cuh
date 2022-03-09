@@ -12,10 +12,11 @@ using namespace seblas;
 class DenseLayer : public Layer {
 public:
     Tensor* weights, *biases, *deltaWeights, *deltaBiases;
-    Tensor* z, *a, *error;
+    Tensor* z, *error;
 
     DenseLayer(unsigned int inputSize, unsigned int outputSize)
     : Layer(inputSize, outputSize) {
+        TYPE = "DENSE";
 
         z = Tensor::declare(outputSize,1)->create();
         a = Tensor::declare(outputSize,1)->create();
@@ -40,6 +41,19 @@ public:
     void recWeights(Tensor* prevA) const;
 
     void recBiases() const;
+
+    void applyWeights(int BATCH_SIZE, float LEARNING_RATE) const;
+
+    void applyBiases(int BATCH_SIZE, float LEARNING_RATE) const;
+
+    //universal methods
+    void forward(Layer *prev) override;
+
+    void backward(Layer *prev) override;
+
+    void backwardOut(Tensor *correct) override;
+
+    void learn(float LEARNING_RATE, int BATCH_SIZE) override;
 };
 
 
