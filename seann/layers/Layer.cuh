@@ -15,15 +15,11 @@ using namespace seblas;
 
 class Layer {
     public:
-    unsigned int inputSize, outputSize;
     Layer* prev{};
     Tensor* a{};    //the activation values of each layer
     const char * TYPE{};
 
-    Layer(unsigned int inputSize, unsigned int outputSize){
-        this->inputSize = inputSize;
-        this->outputSize = outputSize;
-    }
+    Layer(){}
 
     Layer* bind(Layer* pLayer);
 

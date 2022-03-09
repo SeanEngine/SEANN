@@ -14,8 +14,7 @@ public:
     Tensor* weights, *biases, *deltaWeights, *deltaBiases;
     Tensor* z, *error;
 
-    DenseLayer(unsigned int inputSize, unsigned int outputSize)
-    : Layer(inputSize, outputSize) {
+    DenseLayer(unsigned int inputSize, unsigned int outputSize){
         TYPE = "DENSE";
 
         z = Tensor::declare(outputSize,1)->create();
