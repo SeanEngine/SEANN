@@ -18,15 +18,5 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto* A = Tensor::declare(32,12)->create()->randomFill();
-    auto* B = Tensor::declare(12,32)->create()->randomFill();
-    auto* C = Tensor::declare(32,32)->create();
-    auto* BT = transpose(B,Tensor::declare(32,12)->create());
 
-    sgemmNT(A,BT,C);
-    inspect(C);
-
-    cout<<"-----------"<<endl;
-    sgemm(A,B,C);
-    inspect(C);
 }

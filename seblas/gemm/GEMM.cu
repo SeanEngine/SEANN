@@ -695,10 +695,10 @@ __global__ void gemmPrefetching4NN(Tensor *A, Tensor *B, Tensor *C) {
                     toFloat4R(bufferB[loadIndex]) = toFloat4R(
                             ptrB[(readRowB + i + nextTileID) * N + readColB]);
                 } else {
-                    bufferA[loadIndex] = 0;
-                    bufferA[loadIndex+1] = 0;
-                    bufferA[loadIndex+2] = 0;
-                    bufferA[loadIndex+3] = 0;
+                    bufferB[loadIndex] = 0;
+                    bufferB[loadIndex+1] = 0;
+                    bufferB[loadIndex+2] = 0;
+                    bufferB[loadIndex+3] = 0;
                 }
             }
         }
