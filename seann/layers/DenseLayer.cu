@@ -16,3 +16,13 @@ void DenseLayer::backwardCalcOut(Tensor *correct) const {
     *subtract(a, correct, error) * reluDerive(z);
 }
 
+void DenseLayer::recWeights(Tensor *prevA) const {
+    sgemmNT(error, prevA, deltaWeights);
+}
+
+void DenseLayer::recBiases() const {
+    add(deltaBiases, error);
+}
+
+
+

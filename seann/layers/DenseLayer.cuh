@@ -36,6 +36,10 @@ public:
     void backwardCalc(Tensor* prevError, Tensor* prevZ) const;
 
     void backwardCalcOut(Tensor* correct) const;
+
+    void recWeights(Tensor* prevA) const;
+
+    void recBiases() const;
 };
 
 
