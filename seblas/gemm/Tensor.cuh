@@ -13,54 +13,56 @@
 
 namespace seblas {
 
+    typedef unsigned int uint32;
+
     using namespace std;
 
     const dim3 CUDA_BLOCK_SIZE = dim3(16,16,4);
-    static const unsigned int WARP_SIZE = 32;
+    static const uint32 WARP_SIZE = 32;
 
     struct index4{
-        unsigned int n=0, c=0, rows=0, cols=0;
-        __device__ __host__ index4(unsigned int n, unsigned int c, unsigned int rows, unsigned int cols){
+        uint32 n=0, c=0, rows=0, cols=0;
+        __device__ __host__ index4(uint32 n, uint32 c, uint32 rows, uint32 cols){
             this->n = n;
             this->c = c;
             this->rows = rows;
             this->cols = cols;
         }
 
-        __device__ __host__ index4(unsigned int c, unsigned int rows, unsigned int cols){
+        __device__ __host__ index4(uint32 c, uint32 rows, uint32 cols){
             this->c = c;
             this->rows = rows;
             this->cols = cols;
         }
 
-        __device__ __host__ index4(unsigned int rows, unsigned int cols){
+        __device__ __host__ index4(uint32 rows, uint32 cols){
             this->rows = rows;
             this->cols = cols;
         }
 
-        __device__ __host__ unsigned int operator[](unsigned int in) const;
-        __device__ __host__ unsigned int operator[](index4 indexes) const;
+        __device__ __host__ uint32 operator[](uint32 in) const;
+        __device__ __host__ uint32 operator[](index4 indexes) const;
         __device__ __host__ bool operator<(const index4& other) const;
         __device__ __host__ index4 operator-(const index4& other) const;
     };
 
     struct shape4 : public index4{
-        unsigned int size;
-        unsigned int activeDims;
+        uint32 size;
+        uint32 activeDims;
 
-        __device__ __host__ shape4(unsigned int n, unsigned int c, unsigned int rows, unsigned int cols)
+        __device__ __host__ shape4(uint32 n, uint32 c, uint32 rows, uint32 cols)
         : index4(n,c,rows,cols){
             activeDims = 4;
             size = cols * rows * rows * cols;
         }
 
-        __device__ __host__ shape4(unsigned int c, unsigned int rows, unsigned int cols) :
+        __device__ __host__ shape4(uint32 c, uint32 rows, uint32 cols) :
                 index4(1,c, rows, cols){
             activeDims = 3;
             size = cols * rows * c;
         }
 
-        __device__ __host__ shape4(unsigned int rows, unsigned int cols) :
+        __device__ __host__ shape4(uint32 rows, uint32 cols) :
                 index4(1,1,rows,cols){
             activeDims = 2;
             size = cols * rows;
@@ -92,11 +94,11 @@ namespace seblas {
             elements[dims[location]] = value;
         }
 
-        __host__ __device__ void setL(float value, unsigned int index) const {
+        __host__ __device__ void setL(float value, uint32 index) const {
             if(index < dims.size) elements[index] = value;
         }
 
-        [[nodiscard]] __device__ __host__ float getL(float value, unsigned int index) const {
+        [[nodiscard]] __device__ __host__ float getL(float value, uint32 index) const {
             if(index < dims.size) return elements[index];
             return 0;
         }
@@ -146,7 +148,13 @@ namespace seblas {
 
         ///automatic reshape the tensor (as long as the element size remains the same)
         //this will only change the way our program understands the object
-        Tensor* reshape(shape4 newDims);
+        Tensor *reshape(shape4 newDims);
+
+        template<typename... Args>
+        Tensor* reshape(Args &&... args){
+            auto shape = shape4(std::forward<Args>(args)...);
+            return reshape(shape);
+        };
 
         Tensor* operator+(Tensor* other);
         Tensor* operator-(Tensor* other);

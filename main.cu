@@ -18,10 +18,10 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto* A = Tensor::declare(32,15)->create()->constFill(1);
-    auto* B = Tensor::declare(32,15)->create()->constFill(1);
-    auto* C = Tensor::declare(32,32)->create()->constFill(2);
+    auto* A = Tensor::declare(3, 32,32)->create()->constFill(1);
+    auto* B = Tensor::declare(1, 32,32)->create()->constFill(1);
+    auto* C = Tensor::declare(3, 1, 3,3)->create();
 
-    sgemmNTA(A,B,C);
+    convError(A,B,C,1,1,1,1);
     inspect(C);
 }

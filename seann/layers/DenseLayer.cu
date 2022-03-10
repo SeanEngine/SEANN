@@ -5,7 +5,10 @@
 #include "DenseLayer.cuh"
 
 void DenseLayer::forwardCalc(Tensor *prevA) const {
+    shape4 shape = prevA->dims;
+    prevA->reshape(shape.size, 1);
     relu((*sgemm(weights, prevA, z) + biases),a);
+    prevA->reshape(shape);
 }
 
 void DenseLayer::backwardCalc(Tensor *prevError, Tensor *prevZ) const{

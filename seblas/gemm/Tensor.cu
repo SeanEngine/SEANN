@@ -14,14 +14,14 @@
 namespace seblas {
 
     __global__ void randInit(Tensor *target, long seed) {
-        unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 index = blockIdx.x * blockDim.x + threadIdx.x;
         curandStateXORWOW_t state;
         curand_init(index * seed, 0, 0, &state);
         target->setL(static_cast<float>((curand_uniform(&state)) * 2 - 1.0F),index);
     }
 
     __global__ void constInit(Tensor *target, float val) {
-        unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 index = blockIdx.x * blockDim.x + threadIdx.x;
         target->setL(val, index);
     }
 
@@ -51,7 +51,7 @@ namespace seblas {
         QueryPerformanceCounter(&begin);
 
         dim3 block = dim3(CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y);
-        unsigned int totalProc = (this->dims.size + block.x - 1) / block.x;
+        uint32 totalProc = (this->dims.size + block.x - 1) / block.x;
 
         randInit<<<totalProc, block>>>(this, begin.HighPart);
         cudaDeviceSynchronize();
@@ -67,7 +67,7 @@ namespace seblas {
 
     Tensor *Tensor::constFill(float val) {
         dim3 block = dim3(CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y);
-        unsigned int totalProc = (this->dims.size + block.x - 1) / block.x;
+        uint32 totalProc = (this->dims.size + block.x - 1) / block.x;
 
         constInit<<<totalProc, block>>>(this, val);
         cudaDeviceSynchronize();
@@ -93,7 +93,7 @@ namespace seblas {
         return {another.n + n, another.c + c, another.rows + rows, another.cols + cols};
     }
 
-    __device__ __host__ unsigned int index4::operator[](index4 indexes) const {
+    __device__ __host__ uint32 index4::operator[](index4 indexes) const {
         return indexes.n * c * rows * cols + indexes.c * rows * cols + indexes.rows * cols + indexes.cols;
     }
 
@@ -105,7 +105,7 @@ namespace seblas {
         return {n-other.n, c-other.c, rows-other.rows, cols-other.cols};
     }
 
-    __device__ __host__ unsigned int index4::operator[](unsigned int index) const {
+    __device__ __host__ uint32 index4::operator[](uint32 index) const {
         switch (index) {
             case 0: return cols;
             case 1: return rows;
