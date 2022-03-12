@@ -76,8 +76,7 @@ namespace seblas {
     }
 
     __device__ __host__ bool shape4::operator==(shape4 other) const {
-        return rows == other.rows && cols == other.cols && c == other.c && n == other.n
-        && activeDims == other.activeDims;
+        return rows == other.rows && cols == other.cols && c == other.c && n == other.n;
     }
 
     void shape4::copy(shape4 other) {
@@ -85,7 +84,6 @@ namespace seblas {
         cols = other.cols;
         c = other.c;
         n = other.n;
-        activeDims = other.activeDims;
         size = other.size;
     }
 

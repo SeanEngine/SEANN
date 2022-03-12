@@ -18,10 +18,10 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto* A = Tensor::declare(3, 32,32)->create()->constFill(1);
-    auto* B = Tensor::declare(1, 32,32)->create()->constFill(1);
-    auto* C = Tensor::declare(3, 1, 3,3)->create();
+    auto* A = Tensor::declare(3, 32,32)->create()->randomFill();
+    auto* B = Tensor::declare(4, 32,32)->create()->randomFill();
+    auto* C = Tensor::declare(3, 4, 3,3)->create();
 
     convError(A,B,C,1,1,1,1);
-    inspect(C);
+    inspect(C->reshape(3,36));
 }

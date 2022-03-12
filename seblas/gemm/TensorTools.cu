@@ -210,7 +210,6 @@ namespace seblas{
     //I'm tired of optimizing this
     //who fucking cares about transpose performance
     Tensor *transpose(Tensor* in, Tensor* out){
-        assert(in->dims.activeDims==2);
         assert(in->dims.cols == out->dims.rows);
         assert(in->dims.size == out->dims.size);
         dim3 block = CUDA_BLOCK_SIZE;

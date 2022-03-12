@@ -48,23 +48,18 @@ namespace seblas {
 
     struct shape4 : public index4{
         uint32 size;
-        uint32 activeDims;
-
         __device__ __host__ shape4(uint32 n, uint32 c, uint32 rows, uint32 cols)
         : index4(n,c,rows,cols){
-            activeDims = 4;
-            size = cols * rows * rows * cols;
+            size = n * c * rows * cols;
         }
 
         __device__ __host__ shape4(uint32 c, uint32 rows, uint32 cols) :
                 index4(1,c, rows, cols){
-            activeDims = 3;
             size = cols * rows * c;
         }
 
         __device__ __host__ shape4(uint32 rows, uint32 cols) :
                 index4(1,1,rows,cols){
-            activeDims = 2;
             size = cols * rows;
         }
 

@@ -1996,7 +1996,7 @@ template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
 __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW){
     unsigned int M = A->dims.c;
-    unsigned int N = B->dims.c * C->dims.rows * C->dims.cols;
+    unsigned int N = C->dims.c * C->dims.rows * C->dims.cols;
     unsigned int K = A->dims.rows * A->dims.cols;
 
     unsigned const int FH = A->dims.rows;
@@ -2025,7 +2025,7 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
     float bufferB[BLOCK_N * BLOCK_K / threadCount] = {0};
 
     ///prepare configs for reading global
-    float* ptrA = A->elements + blockIdx.y * BLOCK_M * K;
+    float* ptrA = A->elements;
     float* ptrB = B->elements;
     const int blockM = blockIdx.y * BLOCK_M;
     const int blockN = blockIdx.x * BLOCK_N;
@@ -2048,7 +2048,7 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
     #pragma unroll
     for(int i=0; i<BLOCK_M; i+= readRowStrideA){
         if(blockM + readRowA + i < M && readColA < K){
-            tileA[0][readColA][readRowA+i] = ptrA[(readRowA + i)*K + readColA];
+            tileA[0][readColA][readRowA+i] = ptrA[(blockM + readRowA + i)*K + readColA];
         }
     }
 
@@ -2059,15 +2059,17 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
         if(readRowB + i< K && blockN + readColB < N){
 
             //map buffer matrix cords to the 3 dimensional feature cords
-            int oh = (blockN + readColB)/OW;
-            int ow = (blockN + readColB)%OW;
+            int oh = ((blockN + readColB)%(OH * OW))/OW;
+            int ow = ((blockN + readColB)%(OH * OW))%OW;
             int ic = (blockN + readColB)/(OH * OW);
             int fh = ((readRowB + i)%(FH * FW))/FW;
             int fw = ((readRowB + i)%(FH * FW))%FW;
             int ih = oh * strideH - padH + fh;
             int iw = ow * strideW - padW + fw;
             //do memory access
-            tileB[0][readRowB+i][readColB] = ih >= 0 && iw >= 0 && ih < IH && iw < IW ? ptrB[ic * IH * IW + ih * IW + iw] : 0;
+            tileB[0][readRowB+i][readColB] =
+                    ih >= 0 && iw >= 0 && ih < IH && iw < IW ?
+                    ptrB[ic * IH * IW + ih * IW + iw] : 0;
         }
     }
     __syncthreads();
@@ -2093,7 +2095,7 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
             for (int i = 0; i < BLOCK_M; i += readRowStrideA) {
                 int loadIndex = i / readRowStrideA;
                 bufferA[loadIndex] = blockM + readRowA + i < M && readColA + nextTileID < K ?
-                                     ptrA[(readRowA + i) * K + readColA + nextTileID] : 0;
+                                     ptrA[(blockM + readRowA + i) * K + readColA + nextTileID] : 0;
             }
 
             #pragma unroll
@@ -2101,8 +2103,8 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
 
                 //calculate remapping
                 int loadIndex = i / readRowStrideB;
-                int oh = (blockN + readColB)/OW;
-                int ow = (blockN + readColB)%OW;
+                int oh = ((blockN + readColB)%(OH * OW))/OW;
+                int ow = ((blockN + readColB)%(OH * OW))%OW;
                 int ic = (blockN + readColB)/(OH * OW);
                 int fh = ((readRowB + i + nextTileID)%(FH * FW))/FW;
                 int fw = ((readRowB + i + nextTileID)%(FH * FW))%FW;
@@ -2110,8 +2112,9 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
                 int iw = ow * strideW - padW + fw;
 
                 //do memory access
-                bufferB[loadIndex] = (readRowB + i + nextTileID < K && blockN + readColB < N) && (ih >= 0 && iw >= 0)
-                                     && (ih < IH && iw < IW)? ptrB[ic * IH * IW + ih * IW + iw] : 0;
+                bufferB[loadIndex] = (readRowB + i + nextTileID < K && blockN + readColB < N) &&
+                        (ih >= 0 && iw >= 0) && (ih < IH && iw < IW)?
+                        ptrB[ic * IH * IW + ih * IW + iw] : 0;
             }
         }
 
@@ -2232,7 +2235,7 @@ Tensor* seblas::convError(Tensor *A, Tensor *B, Tensor *C, int strideH, int stri
     assert(C->dims.cols == (B->dims.cols - A->dims.cols + padW*2)/strideW + 1);
 
     uint32 M = A->dims.c;
-    uint32 N = C->dims.rows * C->dims.cols * B->dims.c;
+    uint32 N = C->dims.rows * C->dims.cols * C->dims.c;
 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
