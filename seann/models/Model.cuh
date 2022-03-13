@@ -23,11 +23,19 @@ namespace seann {
 
         virtual void loadDataset() = 0;
 
+        virtual void loadModel() = 0;
+
+        virtual void saveModel() = 0;
+
+        virtual void initModel() = 0;
+
         void prepareBatch(Config conf);
 
-        void fetchBatch(Config conf, uint32 batchId, uint32 epochId);
+        void fetchBatch(Config conf, uint32* batchId, uint32* epochId);
 
         void train(Config conf);
+
+        virtual float calcSampleCost(Tensor* label) = 0;
     };
 }
 

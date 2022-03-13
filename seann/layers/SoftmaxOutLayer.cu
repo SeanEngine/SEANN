@@ -4,10 +4,12 @@
 
 #include "SoftmaxOutLayer.cuh"
 
-void SoftmaxOutLayer::forward(Layer *prev) {
-    softmax(*sgemm(weights, prev->a, z) + biases, a);
-}
+namespace seann {
+    void SoftmaxOutLayer::forward(Layer *prev) {
+        softmax(*sgemm(weights, prev->a, z) + biases, a);
+    }
 
-void SoftmaxOutLayer::backwardOut(Tensor *correct) {
-    softmaxDeriveCE(a, correct, error);
+    void SoftmaxOutLayer::backwardOut(Tensor *correct) {
+        softmaxDeriveCE(a, correct, errors);
+    }
 }

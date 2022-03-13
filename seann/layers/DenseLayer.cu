@@ -3,6 +3,7 @@
 //
 
 #include "DenseLayer.cuh"
+#include "ConvLayer.cuh"
 
 namespace seann {
     void DenseLayer::forwardCalc(Tensor *prevA) const {
@@ -13,26 +14,26 @@ namespace seann {
     }
 
     void DenseLayer::backwardCalc(Tensor *prevError, Tensor *prevZ) const {
-        *sgemmTN(weights, error, prevError) * reluDerive(prevZ);
+        *sgemmTN(weights, errors, prevError) * reluDerive(prevZ);
     }
 
     void DenseLayer::backwardCalcOut(Tensor *correct) const {
-        *subtract(a, correct, error) * reluDerive(z);
+        *subtract(a, correct, errors) * reluDerive(z);
     }
 
     void DenseLayer::recWeights(Tensor *prevA) const {
-        sgemmNTA(error, prevA, deltaWeights);
+        sgemmNTA(errors, prevA, deltaWeights);
     }
 
     void DenseLayer::recBiases() const {
-        add(deltaBiases, error);
+        add(deltaBiases, errors);
     }
 
-    void DenseLayer::applyWeights(int BATCH_SIZE, float LEARNING_RATE) const {
+    void DenseLayer::applyWeights(uint32 BATCH_SIZE, float LEARNING_RATE) const {
         *weights - *deltaWeights * (LEARNING_RATE / (float) BATCH_SIZE);
     }
 
-    void DenseLayer::applyBiases(int BATCH_SIZE, float LEARNING_RATE) const {
+    void DenseLayer::applyBiases(uint32 BATCH_SIZE, float LEARNING_RATE) const {
         *biases - *deltaBiases * (LEARNING_RATE / (float) BATCH_SIZE);
     }
 
@@ -41,11 +42,26 @@ namespace seann {
     }
 
     void DenseLayer::backward(Layer *prev) {
+        if (strcmp(prev->TYPE,"INPUT") == 0) {
+            recWeights(prev->a);
+            recBiases();
+            return;
+        }
+
         if (strcmp(prev->TYPE, "DENSE") == 0) {
             auto *proc = (DenseLayer *) prev;
-            backwardCalc(proc->error, proc->z);
+            backwardCalc(proc->errors, proc->z);
             recWeights(proc->a);
             recBiases();
+            return;
+        }
+
+        if (strcmp(prev->TYPE, "CONV") == 0) {
+            auto *proc = (ConvLayer *) prev;
+            backwardCalc(proc->errors, proc->z);
+            recWeights(proc->a);
+            recBiases();
+            return;
         }
     }
 
@@ -53,7 +69,7 @@ namespace seann {
         backwardCalcOut(correct);
     }
 
-    void DenseLayer::learn(float LEARNING_RATE, int BATCH_SIZE) {
+    void DenseLayer::learn(float LEARNING_RATE, uint32 BATCH_SIZE) {
         applyWeights(BATCH_SIZE, LEARNING_RATE);
         applyBiases(BATCH_SIZE, LEARNING_RATE);
     }

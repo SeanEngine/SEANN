@@ -19,6 +19,8 @@ namespace seann {
 
         ConvLayer(shape4 filterSize, uint32 ih, uint32 iw, int strideH, int strideW, int padH, int padW,
                   bool enableBiases) {
+            TYPE = "CONV";
+
             uint32 oh = (ih - filterSize.rows + 2 * padH) / strideH + 1;
             uint32 ow = (iw - filterSize.cols + 2 * padW) / strideW + 1;
             this->enableBias = enableBiases;
@@ -50,9 +52,15 @@ namespace seann {
 
         void recBiases() const;
 
-        void applyFilters(float LEARNING_RATE, int BATCH_SIZE) const;
+        void applyFilters(float LEARNING_RATE, uint32 BATCH_SIZE) const;
 
-        void applyBiases(float LEARNING_RATE, int BATCH_SIZE) const;
+        void applyBiases(float LEARNING_RATE, uint32 BATCH_SIZE) const;
+
+        void forward(Layer *prev) override;
+
+        void backward(Layer *prev) override;
+
+        void learn(float LEARNING_RATE, uint32 BATCH_SIZE) override;
     };
 }
 

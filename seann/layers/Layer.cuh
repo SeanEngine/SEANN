@@ -20,7 +20,7 @@ namespace seann {
         Tensor *a{};    //the activation values of each layer
         const char *TYPE{};
 
-        Layer() {}
+        Layer() = default;
 
         Layer *bind(Layer *pLayer);
 
@@ -37,7 +37,7 @@ namespace seann {
         virtual void backwardOut(Tensor *correct) = 0;
 
         // update weights
-        virtual void learn(float LEARNING_RATE, int BATCH_SIZE) = 0;
+        virtual void learn(float LEARNING_RATE, uint32 BATCH_SIZE) = 0;
     };
 }
 

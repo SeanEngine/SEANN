@@ -8,12 +8,19 @@
 #include "DenseLayer.cuh"
 #include "../../seblas/gemm/TensorTools.cuh"
 
-class SoftmaxOutLayer : public DenseLayer {
-public:
-    void forward(Layer *prev) override;
+namespace seann{
+    class SoftmaxOutLayer : public DenseLayer {
+    public:
+    SoftmaxOutLayer(uint32 inputSize, uint32 outputSize)
+        : DenseLayer(inputSize, outputSize) {
+            TYPE = "SOFTMAX_OUT";
+        }
 
-    void backwardOut(Tensor* correct) override;
-};
+        void forward(Layer *prev) override;
+
+        void backwardOut(Tensor *correct) override;
+    };
+}
 
 
 #endif //SEANN_SOFTMAXOUTLAYER_CUH

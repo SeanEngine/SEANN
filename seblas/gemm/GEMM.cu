@@ -2213,7 +2213,7 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, 
     return C;
 }
 
-//C is the error of prev layer and B is for this layer
+//C is the errors of prev layer and B is for this layer
 Tensor* seblas::convDerive(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW) {
     assert(B->dims.rows == (C->dims.rows - A->dims.rows + padH*2)/strideH + 1);
     assert(B->dims.cols == (C->dims.cols - A->dims.cols + padW*2)/strideW + 1);

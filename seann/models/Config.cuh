@@ -16,11 +16,13 @@ namespace seann{
         const char* MODEL_SAV_PATH{};
 
         const uint32 BATCH_SIZE{};
-        const uint32 LEARNING_RATE{};
+        const float LEARNING_RATE{};
         const uint32 EPOCHS{};
 
         const shape4 DATA_SHAPE;
         const shape4 LABEL_SHAPE;
+
+        const bool LOAD_MODEL_FROM_SAV = false;
     };
 }
 

@@ -13,14 +13,14 @@ namespace seann {
     class DenseLayer : public Layer {
     public:
         Tensor *weights, *biases, *deltaWeights, *deltaBiases;
-        Tensor *z, *error;
+        Tensor *z, *errors;
 
         DenseLayer(unsigned int inputSize, unsigned int outputSize) {
             TYPE = "DENSE";
 
             z = Tensor::declare(outputSize, 1)->create();
             a = Tensor::declare(outputSize, 1)->create();
-            error = Tensor::declare(outputSize, 1)->create();
+            errors = Tensor::declare(outputSize, 1)->create();
 
             weights = Tensor::declare(outputSize, inputSize)->create();
             biases = Tensor::declare(outputSize, 1)->create();
@@ -32,8 +32,8 @@ namespace seann {
         //forward activation
         void forwardCalc(Tensor *prevA) const;
 
-        //calculate the error of the previous layer
-        //from the error of this layer
+        //calculate the errors of the previous layer
+        //from the errors of this layer
         void backwardCalc(Tensor *prevError, Tensor *prevZ) const;
 
         void backwardCalcOut(Tensor *correct) const;
@@ -42,9 +42,9 @@ namespace seann {
 
         void recBiases() const;
 
-        void applyWeights(int BATCH_SIZE, float LEARNING_RATE) const;
+        void applyWeights(uint32 BATCH_SIZE, float LEARNING_RATE) const;
 
-        void applyBiases(int BATCH_SIZE, float LEARNING_RATE) const;
+        void applyBiases(uint32 BATCH_SIZE, float LEARNING_RATE) const;
 
         //universal methods
         void forward(Layer *prev) override;
@@ -53,7 +53,7 @@ namespace seann {
 
         void backwardOut(Tensor *correct) override;
 
-        void learn(float LEARNING_RATE, int BATCH_SIZE) override;
+        void learn(float LEARNING_RATE, uint32 BATCH_SIZE) override;
     };
 }
 

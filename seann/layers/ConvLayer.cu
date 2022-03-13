@@ -22,15 +22,40 @@ namespace seann {
             convBiasError(errors, deltaBiases, buffer);
     }
 
-    void ConvLayer::applyFilters(float LEARNING_RATE, int BATCH_SIZE) const {
+    void ConvLayer::applyFilters(float LEARNING_RATE, uint32 BATCH_SIZE) const {
         *filters - *deltaFilters * (LEARNING_RATE / (float) BATCH_SIZE);
         deltaFilters->zeroFill();
     }
 
-    void ConvLayer::applyBiases(float LEARNING_RATE, int BATCH_SIZE) const {
+    void ConvLayer::applyBiases(float LEARNING_RATE, uint32 BATCH_SIZE) const {
         if (enableBias) {
             *biases - *deltaBiases * (LEARNING_RATE / (float) BATCH_SIZE);
             deltaBiases->zeroFill();
         }
+    }
+
+    void ConvLayer::forward(Layer *prev) {
+        forwardCalc(prev->a);
+    }
+
+    void ConvLayer::backward(Layer *prev) {
+        if(strcmp(prev->TYPE,"INPUT")==0){
+            recFilters(prev->a);
+            recBiases();
+            return;
+        }
+
+        if(strcmp(prev->TYPE,"CONV")==0){
+            auto* proc = (ConvLayer*)prev;
+            backwardCalc(proc->z, proc->errors);
+            recFilters(proc->a);
+            recBiases();
+            return;
+        }
+    }
+
+    void ConvLayer::learn(float LEARNING_RATE, uint32 BATCH_SIZE) {
+        applyFilters(LEARNING_RATE, BATCH_SIZE);
+        applyBiases(LEARNING_RATE, BATCH_SIZE);
     }
 }
