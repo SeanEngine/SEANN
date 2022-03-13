@@ -1573,7 +1573,8 @@ __global__ void gemmPrefetching4NTA (Tensor* A, Tensor* B, Tensor* C) {
  */
 template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
-__global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int strideW, int padH, int padW){
+__global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int strideW, int padH, int padW,
+                               /*NULLABLE*/ Tensor* biases){
 
     // MatA: OC, IC * FH * FW; MatB: IC * FH * FW, OH * OW; Mat C: OC, OH * OW
     ///insert parameters
@@ -1765,8 +1766,9 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
         #pragma unroll
         for(int rn = 0; rn < REGIS_N; rn ++){
             if((blockM + threadIdx.y * REGIS_M + rm < M && blockN + threadIdx.x * REGIS_N + rn < N)) {
+                float bias = biases == nullptr ? 0 : biases->elements[blockM + threadIdx.y * REGIS_M + rm];
                 C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
-                            + blockN + threadIdx.x * REGIS_N + rn] = regisC[rm][rn];
+                            + blockN + threadIdx.x * REGIS_N + rn] = regisC[rm][rn] + bias;
             }
         }
     }
@@ -2188,13 +2190,13 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
         for(int rn = 0; rn < REGIS_N; rn ++){
             if((blockM + threadIdx.y * REGIS_M + rm < M && blockN + threadIdx.x * REGIS_N + rn < N)) {
                 C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
-                            + blockN + threadIdx.x * REGIS_N + rn] = regisC[rm][rn];
+                            + blockN + threadIdx.x * REGIS_N + rn] += regisC[rm][rn];
             }
         }
     }
 }
 
-Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW) {
+Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW, Tensor* biases) {
     assert(C->dims.rows == (B->dims.rows - A->dims.rows + padH*2)/strideH + 1);
     assert(C->dims.cols == (B->dims.cols - A->dims.cols + padW*2)/strideW + 1);
     assert(C->dims.c == A->dims.n && B->dims.c == A->dims.c);
@@ -2205,7 +2207,7 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
 
-    gemmImplicit4D<BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C, strideH, strideW, padH, padW);
+    gemmImplicit4D<BM, BN, BK, RM, RN><<<grid, block>>>(A, B, C, strideH, strideW, padH, padW, biases);
     cudaDeviceSynchronize();
     ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
     return C;

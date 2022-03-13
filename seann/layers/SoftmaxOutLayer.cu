@@ -9,5 +9,5 @@ void SoftmaxOutLayer::forward(Layer *prev) {
 }
 
 void SoftmaxOutLayer::backwardOut(Tensor *correct) {
-    subtract(a, correct, error);
+    softmaxDeriveCE(a, correct, error);
 }

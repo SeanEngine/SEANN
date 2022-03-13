@@ -10,7 +10,7 @@ set(OpenCV_DIR D:\\OpenCV_CUDA_4.5.4\\build)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(SEANN main.cu seblas/gemm/Tensor.cu seblas/gemm/Tensor.cuh seblas/assist/ErrorHandler.cu seblas/assist/ErrorHandler.cuh seblas/gemm/GEMM.cu seblas/gemm/GEMM.cuh seblas/assist/DBGTools.cu seblas/assist/DBGTools.cuh seio/loader/ImageReader.cu seio/loader/ImageReader.cuh seblas/gemm/TensorTools.cu seblas/gemm/TensorTools.cuh seblas/gemm/NeuralUtils.cu seblas/gemm/NeuralUtils.cuh seann/layers/Layer.cu seann/layers/Layer.cuh seann/layers/DenseLayer.cu seann/layers/DenseLayer.cuh seann/layers/SoftmaxOutLayer.cu seann/layers/SoftmaxOutLayer.cuh seann/layers/ConvLayer.cu seann/layers/ConvLayer.cuh)
+add_executable(SEANN main.cu seblas/gemm/Tensor.cu seblas/gemm/Tensor.cuh seblas/assist/ErrorHandler.cu seblas/assist/ErrorHandler.cuh seblas/gemm/GEMM.cu seblas/gemm/GEMM.cuh seblas/assist/DBGTools.cu seblas/assist/DBGTools.cuh seio/loader/ImageReader.cu seio/loader/ImageReader.cuh seblas/gemm/TensorTools.cu seblas/gemm/TensorTools.cuh seblas/gemm/NeuralUtils.cu seblas/gemm/NeuralUtils.cuh seann/layers/Layer.cu seann/layers/Layer.cuh seann/layers/DenseLayer.cu seann/layers/DenseLayer.cuh seann/layers/SoftmaxOutLayer.cu seann/layers/SoftmaxOutLayer.cuh seann/layers/ConvLayer.cu seann/layers/ConvLayer.cuh seann/models/Model.cu seann/models/Model.cuh seann/models/Config.cuh)
 
 target_link_libraries(SEANN ${OpenCV_LIBS})
 

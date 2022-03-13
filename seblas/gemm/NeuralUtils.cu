@@ -8,7 +8,7 @@
 #define toFloat4R(ptr) (reinterpret_cast<float4*>(&(ptr))[0])
 #define sigmoidCalc(x) (1.0f / (1.0f + expf(-x)))
 #define tanhCalc(x) (expf(x) - expf(-x) / (expf(x) + expf(-x)))
-#define topOff(a,b) (a + b - 1)/b
+#define topOff(a,b) (a + b - 1)/(b)
 
 namespace seblas{
 
@@ -29,31 +29,31 @@ namespace seblas{
         return val;
     }
 
-    __device__ __forceinline__ float regisMax(const float* regis, unsigned int count){
+    __device__ __forceinline__ float regisMax(const float* regis, uint32 count){
         float max = 0.0f;
         #pragma unroll
-        for (unsigned int i = 0; i < count; i++) {
+        for (uint32 i = 0; i < count; i++) {
             max = regis[i] > max ? regis[i] : max;
         }
         return max;
     }
 
     __global__ void reluD(Tensor* input, Tensor* output){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             output->elements[idx] = max(input->elements[idx], 0.0f);
         }
     }
 
     __global__ void reluDGrad(Tensor* input){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             input->elements[idx] = (input->elements[idx] > 0.0f) ? 1.0f : 0.0f;
         }
     }
 
     __global__ void relu4D(Tensor* input, Tensor* output){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -66,7 +66,7 @@ namespace seblas{
     }
 
     __global__ void relu4DGrad(Tensor* input){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -79,7 +79,7 @@ namespace seblas{
     }
 
     __global__ void leakyReluD(Tensor* input, Tensor* output, float alpha){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             float val = input->elements[idx];
             output->elements[idx] = val > 0 ? val : alpha * val;
@@ -87,7 +87,7 @@ namespace seblas{
     }
 
     __global__ void leakyReluDGrad(Tensor* input, float alpha){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             float val = input->elements[idx];
             input->elements[idx] = val > 0 ? 1.0f : alpha;
@@ -95,7 +95,7 @@ namespace seblas{
     }
 
     __global__ void leakyRelu4D(Tensor* input,Tensor* output, float alpha){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -108,7 +108,7 @@ namespace seblas{
     }
 
     __global__ void leakyRelu4DGrad(Tensor* input, float alpha){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -121,7 +121,7 @@ namespace seblas{
     }
 
     __global__ void sigmoidD(Tensor* input, Tensor* output){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             float x = input->elements[idx];
             output->elements[idx] = sigmoidCalc(x);
@@ -129,7 +129,7 @@ namespace seblas{
     }
 
     __global__ void sigmoidDGrad(Tensor* input){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             float x = input->elements[idx];
             input->elements[idx] = sigmoidCalc(x) * (1.0f - sigmoidCalc(x));
@@ -137,7 +137,7 @@ namespace seblas{
     }
 
     __global__ void sigmoid4D(Tensor* input, Tensor* output){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -150,7 +150,7 @@ namespace seblas{
     }
 
     __global__ void sigmoid4DGrad(Tensor* input){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -163,7 +163,7 @@ namespace seblas{
     }
 
     __global__ void tanhD(Tensor* input, Tensor* output){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             float x = input->elements[idx];
             output->elements[idx] = tanhCalc(x);
@@ -171,7 +171,7 @@ namespace seblas{
     }
 
     __global__ void tanhDGrad(Tensor* input){
-        unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        uint32 idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx < input->dims.size) {
             float x = input->elements[idx];
             input->elements[idx] = 1.0f - tanhCalc(x) * tanhCalc(x);
@@ -179,7 +179,7 @@ namespace seblas{
     }
 
     __global__ void tanh4D(Tensor* input, Tensor* output){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -192,7 +192,7 @@ namespace seblas{
     }
 
     __global__ void tanh4DGrad(Tensor* input){
-        unsigned int idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
+        uint32 idx = (threadIdx.x + blockIdx.x * blockDim.x) * 4;
         float regis[4];
         if (idx < input->dims.size) {
             toFloat4R(regis[0]) = toFloat4R(input->elements[idx]);
@@ -203,17 +203,17 @@ namespace seblas{
             toFloat4R(input->elements[idx]) = toFloat4R(regis[0]);
         }
     }
-    template <const unsigned int BLOCK_WARPS>
-    __global__ void reduceD(const float* input, float* buffer, unsigned int procSize){
+    template <const uint32 BLOCK_WARPS>
+    __global__ void reduceD(const float* input, float* buffer, uint32 procSize){
         //loading data
         //each thread loads 2 elements
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        unsigned int tid = threadIdx.x;
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 tid = threadIdx.x;
 
         //warp reduction
         __shared__ float warpCache[BLOCK_WARPS];
-        unsigned const int warpId = tid / WARP_SIZE;
-        unsigned const int laneId = tid % WARP_SIZE;
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
         float sum = idx < procSize ? input[idx] : 0.0f;
         __syncthreads();
 
@@ -229,18 +229,18 @@ namespace seblas{
         }
     }
 
-    template <const unsigned int BLOCK_WARPS>
-    __global__ void reduce4D(float* input, float* buffer, unsigned int procSize){
+    template <const uint32 BLOCK_WARPS>
+    __global__ void reduce4D(float* input, float* buffer, uint32 procSize){
         //loading data
         //each thread loads 2 elements
-        unsigned int idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
-        unsigned int tid = threadIdx.x;
+        uint32 idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+        uint32 tid = threadIdx.x;
         float regisP[4];
 
         //warp reduction
         __shared__ float warpCache[BLOCK_WARPS];
-        unsigned const int warpId = tid / WARP_SIZE;
-        unsigned const int laneId = tid % WARP_SIZE;
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
         if(idx < procSize){
             toFloat4R(regisP[0]) = toFloat4R(input[idx]);
         }
@@ -259,15 +259,15 @@ namespace seblas{
         }
     }
 
-    template <const unsigned int BLOCK_WARPS>
-    __global__ void softmaxD1024(const float* input, float* output, unsigned int procSize){
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        unsigned int tid = threadIdx.x;
+    template <const uint32 BLOCK_WARPS>
+    __global__ void softmaxD1024(const float* input, float* output, uint32 procSize){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 tid = threadIdx.x;
 
         __shared__ float warpCache[BLOCK_WARPS];
         __shared__ float maxCache[BLOCK_WARPS];
-        unsigned const int warpId = tid / WARP_SIZE;
-        unsigned const int laneId = tid % WARP_SIZE;
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
 
         float value = idx < procSize ? input[idx] : 0.0f;
         float max = value;
@@ -308,15 +308,15 @@ namespace seblas{
         }
     }
 
-    template <const unsigned int BLOCK_WARPS>
-    __global__ void softmax4D4096(float* input, float* output, unsigned int procSize){
-        unsigned int idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
-        unsigned int tid = threadIdx.x;
+    template <const uint32 BLOCK_WARPS>
+    __global__ void softmax4D4096(float* input, float* output, uint32 procSize){
+        uint32 idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+        uint32 tid = threadIdx.x;
 
         __shared__ float warpCache[BLOCK_WARPS];
         __shared__ float maxCache[BLOCK_WARPS];
-        unsigned const int warpId = tid / WARP_SIZE;
-        unsigned const int laneId = tid % WARP_SIZE;
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
 
         float regisP[4];
         if(idx < procSize){
@@ -368,14 +368,14 @@ namespace seblas{
         }
     }
 
-    template <const unsigned int BLOCK_WARPS>
-    __global__ void findMaxD(const float* input, float* buffer, unsigned int procSize){
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        unsigned int tid = threadIdx.x;
+    template <const uint32 BLOCK_WARPS>
+    __global__ void findMaxD(const float* input, float* buffer, uint32 procSize){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 tid = threadIdx.x;
 
         __shared__ float warpCache[BLOCK_WARPS];
-        unsigned const int warpId = tid / WARP_SIZE;
-        unsigned const int laneId = tid % WARP_SIZE;
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
 
         float value = idx < procSize ? input[idx] : 0.0f;
         float max = value;
@@ -397,15 +397,15 @@ namespace seblas{
         if(idx < procSize) buffer[idx] = max;
     }
 
-    template <const unsigned int BLOCK_WARPS>
-    __global__ void softmaxReduceD(const float* output, float* buffer, unsigned int procSize){
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        unsigned int tid = threadIdx.x;
+    template <const uint32 BLOCK_WARPS>
+    __global__ void softmaxReduceD(const float* output, float* buffer, uint32 procSize){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 tid = threadIdx.x;
 
         //warp reduction
         __shared__ float warpCache[BLOCK_WARPS];
-        unsigned const int warpId = tid / WARP_SIZE;
-        unsigned const int laneId = tid % WARP_SIZE;
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
         float sum = idx < procSize ? output[idx] : 0.0f;
         __syncthreads();
 
@@ -423,29 +423,29 @@ namespace seblas{
         }
     }
 
-    __global__ void softmaxAssignD(const float* input, float* output, const float* maxBuf, unsigned int procSize){
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    __global__ void softmaxAssignD(const float* input, float* output, const float* maxBuf, uint32 procSize){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
         if(idx < procSize){
             output[idx] = exp(input[idx] - maxBuf[0]);
         }
     }
 
-    __global__ void softmaxResultD(float* output, const float* sumBuf, unsigned int procSize){
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    __global__ void softmaxResultD(float* output, const float* sumBuf, uint32 procSize){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
         if(idx < procSize){
             output[idx] = output[idx] / sumBuf[0];
         }
     }
 
-    __global__ void softmaxDeriveD(Tensor* input, Tensor* correct){
-        unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    __global__ void softmaxDeriveD(Tensor* input, Tensor* correct, Tensor* output){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
         if(idx < input->dims.size){
-            input->elements[idx] = input->elements[idx] - correct->elements[idx];
+            output->elements[idx] = input->elements[idx] - correct->elements[idx];
         }
     }
 
-    __global__ void softmaxDerive4D(Tensor* input, Tensor* correct){
-        unsigned int idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+    __global__ void softmaxDerive4D(Tensor* input, Tensor* correct, Tensor* output){
+        uint32 idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
         float regisP[4];
         float regisC[4];
         if(idx < input->dims.size){
@@ -455,13 +455,76 @@ namespace seblas{
             regisP[1] = regisP[1] - regisC[1];
             regisP[2] = regisP[2] - regisC[2];
             regisP[3] = regisP[3] - regisC[3];
-            toFloat4R(input->elements[idx]) = toFloat4R(regisP[0]);
+            toFloat4R(output->elements[idx]) = toFloat4R(regisP[0]);
+        }
+    }
+
+    template <const uint32 BLOCK_WARPS>
+    __global__ void rowReduceD(const float* input, float* buffer, uint32 procSize, uint32 stride){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 rowID = blockIdx.y;
+        uint32 tid = threadIdx.x;
+
+        //warp reduction
+        __shared__ float warpCache[BLOCK_WARPS];
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
+        float sum = idx < procSize ? input[idx] : 0.0f;
+        __syncthreads();
+
+        sum = warpReduce(sum);
+        if(laneId==0) warpCache[warpId] = sum;
+
+        __syncthreads();
+
+        if(warpId==0){
+            sum = laneId < BLOCK_WARPS ? warpCache[laneId] : 0.0f;
+            sum = warpReduce(sum);
+            if(laneId==0) buffer[rowID * stride + blockIdx.x] = sum;
+        }
+    }
+
+    template <const uint32 BLOCK_WARPS>
+    __global__ void rowReduce4D(float* input, float* buffer, uint32 procSize, uint32 stride){
+        //loading data
+        //each thread loads 2 elements
+        uint32 idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+        uint32 tid = threadIdx.x;
+        uint32 rowID = blockIdx.y;
+        float regisP[4];
+
+        //warp reduction
+        __shared__ float warpCache[BLOCK_WARPS];
+        const uint32 warpId = tid / WARP_SIZE;
+        const uint32 laneId = tid % WARP_SIZE;
+        if(idx < procSize){
+            toFloat4R(regisP[0]) = toFloat4R(input[idx]);
+        }
+        float sum = regisP[0] + regisP[1] + regisP[2] + regisP[3];
+        __syncthreads();
+
+        sum = warpReduce(sum);
+        if(laneId==0) warpCache[warpId] = sum;
+
+        __syncthreads();
+
+        if(warpId==0){
+            sum = laneId < BLOCK_WARPS ? warpCache[laneId] : 0.0f;
+            sum = warpReduce(sum);
+            if(laneId==0) buffer[rowID * stride + blockIdx.x] = sum;
+        }
+    }
+
+    __global__ void sumAdd(Tensor* biases, Tensor* sumBuffer){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if(idx < biases->dims.size){
+            biases->elements[idx] = biases->elements[idx] + sumBuffer->get(idx,0);
         }
     }
 
     Tensor* relu(Tensor* input, Tensor* output){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             relu4D<<<grid, block>>>(input, output);
@@ -474,8 +537,8 @@ namespace seblas{
     }
 
     Tensor* reluDerive(Tensor* input){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             relu4DGrad<<<grid, block>>>(input);
@@ -488,8 +551,8 @@ namespace seblas{
     }
 
     Tensor* leakyRelu(Tensor* input, Tensor* output, float alpha){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             leakyRelu4D<<<grid, block>>>(input, output, alpha);
@@ -502,8 +565,8 @@ namespace seblas{
     }
 
     Tensor* leakyReluDerive(Tensor* input, float alpha){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             leakyRelu4DGrad<<<grid, block>>>(input, alpha);
@@ -516,8 +579,8 @@ namespace seblas{
     }
 
     Tensor* sigmoid(Tensor* input, Tensor* output){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             sigmoid4D<<<grid, block>>>(input, output);
@@ -530,8 +593,8 @@ namespace seblas{
     }
 
     Tensor* sigmoidDerive(Tensor* input){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             sigmoid4DGrad<<<grid, block>>>(input);
@@ -544,8 +607,8 @@ namespace seblas{
     }
 
     Tensor* tanh(Tensor* input, Tensor* output){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             tanh4D<<<grid, block>>>(input, output);
@@ -558,8 +621,8 @@ namespace seblas{
     }
 
     Tensor* tanhDerive(Tensor* input){
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block*4);
             tanh4DGrad<<<grid, block>>>(input);
@@ -573,11 +636,11 @@ namespace seblas{
 
     float reduce(Tensor* input, float* buffer){
         float* source = input->elements;
-        unsigned int procSize = input->dims.size;
-        unsigned int block = REDUCE_WARP * WARP_SIZE;
+        uint32 procSize = input->dims.size;
+        uint32 block = REDUCE_WARP * WARP_SIZE;
 
         while(procSize > 1){
-            unsigned int grid = topOff(procSize, block);
+            uint32 grid = topOff(procSize, block);
             if (procSize % 4== 0){
                 grid = topOff(procSize, block * 4);
                 reduce4D<REDUCE_WARP><<<grid, block>>>(source, buffer, procSize);
@@ -597,14 +660,15 @@ namespace seblas{
         return result;
     }
 
+
     Tensor* softmax(Tensor* input, Tensor* out){
         float* source = input->elements;
-        unsigned int procSize = input->dims.size;
-        unsigned int block = SOFTMAX_WARP * WARP_SIZE;
+        uint32 procSize = input->dims.size;
+        uint32 block = SOFTMAX_WARP * WARP_SIZE;
 
         if(procSize % 4 == 0) {
             if (procSize <= 4096) {
-                unsigned int grid = topOff(procSize, block * 4);
+                uint32 grid = topOff(procSize, block * 4);
                 softmax4D4096<SOFTMAX_WARP><<<grid, block>>>(source, out->elements, procSize);
                 cudaDeviceSynchronize();
                 ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
@@ -614,14 +678,14 @@ namespace seblas{
         }
 
         if(procSize <= 1024){
-            unsigned int grid = topOff(procSize, block);
+            uint32 grid = topOff(procSize, block);
             softmaxD1024<SOFTMAX_WARP><<<grid, block>>>(source, out->elements, procSize);
             cudaDeviceSynchronize();
             ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
             return out;
         }
 
-        unsigned int grid = topOff(procSize, block);
+        uint32 grid = topOff(procSize, block);
         float* maxBuf, *sumBuf;
         cudaMalloc(&maxBuf, sizeof(float) * grid);
         cudaMalloc(&sumBuf, sizeof(float) * grid);
@@ -629,7 +693,7 @@ namespace seblas{
         auto* maxBufT  = Tensor::declare(1,2);
         maxBufT->elements = sumBuf;
 
-        unsigned int maxProc = procSize;
+        uint32 maxProc = procSize;
         float* op = source;
         while (maxProc > 1) {
             grid = topOff(maxProc, block);
@@ -645,7 +709,7 @@ namespace seblas{
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
 
-        unsigned int sumProc = procSize;
+        uint32 sumProc = procSize;
         op = out->elements;
         while (sumProc > 1) {
             grid = topOff(sumProc, block);
@@ -668,20 +732,52 @@ namespace seblas{
         return out;
     }
 
+
     //CE -> Cross Entropy, Uses only as the output layer
-    Tensor* softmaxDeriveCE(Tensor* input, Tensor* correct) {
+    Tensor* softmaxDeriveCE(Tensor* input, Tensor* correct, Tensor* output) {
         assert(input->dims.size == correct->dims.size);
-        unsigned int block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
-        unsigned int grid = topOff(input->dims.size, block);
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size, block);
 
         if(input->dims.size % 4 == 0){
             grid = topOff(input->dims.size, block * 4);
-            softmaxDerive4D<<<grid,block>>>(input, correct);
+            softmaxDerive4D<<<grid,block>>>(input, correct, output);
         }else{
-            softmaxDeriveD<<<grid,block>>>(input, correct);
+            softmaxDeriveD<<<grid,block>>>(input, correct, output);
         }
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
         return input;
+    }
+
+    Tensor* convBiasError(Tensor* input, Tensor* deltaBiases, Tensor* buf){
+        assert(input->dims.c == deltaBiases->dims.size);
+        float* source = input->elements;
+        float* buffer = buf->elements;
+        uint32 procSize = input->dims.rows * input->dims.cols;
+        uint32 block = REDUCE_WARP * WARP_SIZE;
+        uint32 stride = buf->dims.cols;
+        uint32 gridY = input->dims.c;
+
+        while(procSize > 1){
+            uint32 grid = topOff(procSize, block);
+            if (procSize % 4== 0){
+                grid = topOff(procSize, block * 4);
+                rowReduce4D<REDUCE_WARP><<<dim3(grid, gridY), block>>>(source, buffer, procSize, stride);
+                goto OUT;
+            }
+            rowReduceD<REDUCE_WARP><<<dim3(grid, gridY),block>>>(source, buffer, procSize, stride);
+            OUT:
+            cudaDeviceSynchronize();
+            ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+            procSize = grid;
+            source = buffer;
+        }
+
+        uint32 grid = topOff(input->dims.c, block);
+        sumAdd<<<grid, block>>>(deltaBiases, buf);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return deltaBiases;
     }
 }

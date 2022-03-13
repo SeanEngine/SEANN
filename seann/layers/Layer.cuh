@@ -13,31 +13,32 @@
 
 using namespace seblas;
 
-class Layer {
+namespace seann {
+    class Layer {
     public:
-    Layer* prev{};
-    Tensor* a{};    //the activation values of each layer
-    const char * TYPE{};
+        Layer *prev{};
+        Tensor *a{};    //the activation values of each layer
+        const char *TYPE{};
 
-    Layer(){}
+        Layer() {}
 
-    Layer* bind(Layer* pLayer);
+        Layer *bind(Layer *pLayer);
 
-    void forward();
+        void forward();
 
-    void backward();
+        void backward();
 
-    // forward activation
-    virtual void forward(Layer* prev) = 0;
+        // forward activation
+        virtual void forward(Layer *prev) = 0;
 
-    // backward propagation
-    virtual void backward(Layer* prev) = 0;
+        // backward propagation
+        virtual void backward(Layer *prev) = 0;
 
-    virtual void backwardOut(Tensor* correct) = 0;
+        virtual void backwardOut(Tensor *correct) = 0;
 
-    // update weights
-    virtual void learn(float LEARNING_RATE, int BATCH_SIZE) = 0;
-};
-
+        // update weights
+        virtual void learn(float LEARNING_RATE, int BATCH_SIZE) = 0;
+    };
+}
 
 #endif //SEANN_LAYER_CUH

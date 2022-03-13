@@ -17,7 +17,7 @@ namespace seblas {
     // A : adding the element instead of directly replacing
     Tensor* sgemmNTA(Tensor* A, Tensor* B, Tensor* C);
 
-    Tensor* conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW);
+    Tensor* conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW, Tensor* biases);
     Tensor* convDerive(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW);
     Tensor* convError(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW);
 }

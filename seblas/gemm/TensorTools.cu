@@ -6,7 +6,7 @@
 
 #define toFloat4R(ptr) (reinterpret_cast<float4*>(&(ptr))[0])
 #define CUDA_BLOCK_SIZE_1D CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y
-#define topOff(a,b) (a + b - 1)/b
+#define topOff(a,b) (a + b - 1)/(b)
 #define RM 4
 #define RN 4
 

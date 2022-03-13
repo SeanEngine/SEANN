@@ -4,16 +4,17 @@
 
 #include "Layer.cuh"
 
-Layer* Layer::bind(Layer *pLayer) {
-    this->prev = pLayer;
-    return this;
-}
+namespace seann {
+    Layer *Layer::bind(Layer *pLayer) {
+        this->prev = pLayer;
+        return this;
+    }
 
-void Layer::forward() {
-    forward(prev);
-}
+    void Layer::forward() {
+        forward(prev);
+    }
 
-void Layer::backward() {
-    backward(prev);
+    void Layer::backward() {
+        backward(prev);
+    }
 }
-
