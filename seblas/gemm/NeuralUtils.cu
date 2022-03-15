@@ -644,10 +644,10 @@ namespace seblas{
             if (procSize % 4== 0){
                 grid = topOff(procSize, block * 4);
                 reduce4D<REDUCE_WARP><<<grid, block>>>(source, buffer, procSize);
-                goto OUT;
+                goto FINISH;
             }
             reduceD<REDUCE_WARP><<<grid,block>>>(source, buffer, procSize);
-            OUT:
+            FINISH:
             cudaDeviceSynchronize();
             ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
             procSize = grid;
@@ -764,10 +764,10 @@ namespace seblas{
             if (procSize % 4== 0){
                 grid = topOff(procSize, block * 4);
                 rowReduce4D<REDUCE_WARP><<<dim3(grid, gridY), block>>>(source, buffer, procSize, stride);
-                goto OUT;
+                goto FINISH;
             }
             rowReduceD<REDUCE_WARP><<<dim3(grid, gridY),block>>>(source, buffer, procSize, stride);
-            OUT:
+            FINISH:
             cudaDeviceSynchronize();
             ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
             procSize = grid;

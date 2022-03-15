@@ -10,7 +10,9 @@
 #include "cuda_runtime_api.h"
 #include "../assist/ErrorHandler.cuh"
 #include "vector"
+#include "string"
 
+using namespace std;
 namespace seblas {
 
     typedef unsigned int uint32;
@@ -19,6 +21,8 @@ namespace seblas {
 
     const dim3 CUDA_BLOCK_SIZE = dim3(16,16,4);
     static const uint32 WARP_SIZE = 32;
+
+    extern uint32 MEMORY_OCCUPATION;
 
     struct index4{
         uint32 n=0, c=0, rows=0, cols=0;
@@ -44,6 +48,10 @@ namespace seblas {
         __device__ __host__ uint32 operator[](index4 indexes) const;
         __device__ __host__ bool operator<(const index4& other) const;
         __device__ __host__ index4 operator-(const index4& other) const;
+
+        [[nodiscard]] string toString() const{
+            return "(" + to_string(n) + "," + to_string(c) + "," + to_string(rows) + "," + to_string(cols) + ")";
+        }
     };
 
     struct shape4 : public index4{
@@ -121,6 +129,7 @@ namespace seblas {
             cudaFree(tensor->elements);
             cudaFreeHost(tensor);
             ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
+            MEMORY_OCCUPATION -= tensor->dims.size * sizeof(float);
         }
 
         ///destroy a tensor object on Host

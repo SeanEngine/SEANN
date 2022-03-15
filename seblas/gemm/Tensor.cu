@@ -13,6 +13,8 @@
 
 namespace seblas {
 
+    uint32 MEMORY_OCCUPATION = 0;
+
     __global__ void randInit(Tensor *target, long seed) {
         uint32 index = blockIdx.x * blockDim.x + threadIdx.x;
         curandStateXORWOW_t state;
@@ -34,6 +36,7 @@ namespace seblas {
     Tensor *Tensor::create() {
         cudaMalloc(&elements, dims.size * sizeof(float));
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        MEMORY_OCCUPATION += dims.size * sizeof(float);
         return this;
     }
 

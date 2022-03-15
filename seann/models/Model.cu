@@ -8,6 +8,7 @@
 
 using namespace std;
 
+using namespace seio;
 namespace seann {
     
     /** 
@@ -64,7 +65,6 @@ namespace seann {
     }
 
     void Model::train(Config conf) {
-
         registerModel();
         if(conf.LOAD_MODEL_FROM_SAV) loadModel();
         else initModel();
@@ -107,6 +107,9 @@ namespace seann {
             }
 
             //log the batch status for monitoring
+            logInfo(LOG_SEG_SEANN, "Epoch: " + to_string(currentEpoch) + ", Batch: " + to_string(currentBatch) +
+            ", Cost: " + to_string(batchCost));
+
             loadThread.join();
         }
     }

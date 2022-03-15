@@ -9,6 +9,7 @@
 #include "../../seblas/gemm/TensorTools.cuh"
 #include "../../seblas/gemm/GEMM.cuh"
 #include "../../seblas/gemm/NeuralUtils.cuh"
+#include "../../seio/logging/LogUtils.cuh"
 
 
 using namespace seblas;

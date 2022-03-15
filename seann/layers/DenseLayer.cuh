@@ -8,6 +8,7 @@
 #include "Layer.cuh"
 
 using namespace seblas;
+using namespace seio;
 
 namespace seann {
     class DenseLayer : public Layer {
@@ -27,6 +28,11 @@ namespace seann {
 
             deltaWeights = Tensor::declare(outputSize, inputSize)->create();
             deltaBiases = Tensor::declare(outputSize, 1)->create();
+
+            logInfo(LOG_SEG_SEANN, "Registered FC: Input:" + to_string(inputSize) +
+                   " Output:" + to_string(outputSize));
+            logDebug(LOG_SEG_SEANN,"Current total memory occupation : " +
+                to_string(MEMORY_OCCUPATION/(1024*1024)));
         }
 
         //forward activation

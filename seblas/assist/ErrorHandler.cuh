@@ -5,6 +5,8 @@
 #ifndef SEANN_ERRORHANDLER_CUH
 #define SEANN_ERRORHANDLER_CUH
 
+#include "../../seio/logging/LogUtils.cuh"
+
 namespace seblas {
     class ErrorHandler {
     public:

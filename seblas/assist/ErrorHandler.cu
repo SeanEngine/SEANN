@@ -6,10 +6,12 @@
 #include <iostream>
 #include <cassert>
 
+
 void seblas::ErrorHandler::checkDeviceStatus(const char* file, int line) {
      cudaError_t err = cudaGetLastError();
      if(err!=cudaSuccess){
-         std::cout<<"Encountered CUDA Errors : "<<file<<" "<<line<<" "<<cudaGetErrorString(err)<<std::endl;
+         seio::logFatal(seio::LOG_SEG_SEBLAS,string("Encountered CUDA Errors : ") + " line: " +
+         to_string(line) + " " + cudaGetErrorString(err) + "\n" + file);
          assert(err==cudaSuccess);
      }
 }

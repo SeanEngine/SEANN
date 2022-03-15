@@ -8,6 +8,7 @@
 
 #include "Layer.cuh"
 #include "../../seblas/gemm/NeuralUtils.cuh"
+using namespace seio;
 namespace seann {
     class ConvLayer : public Layer {
     public:
@@ -42,6 +43,11 @@ namespace seann {
             this->strideW = strideW;
             this->padH = padH;
             this->padW = padW;
+
+            logInfo(LOG_SEG_SEANN,"Registered CONV : filters:" + filterSize.toString() +
+                " input:" + shape4(filterSize.c,ih,iw).toString() + " output:" + a->dims.toString());
+            logDebug(LOG_SEG_SEANN,"Current total memory occupation : " +
+                to_string(MEMORY_OCCUPATION/(1024*1024)));
         }
 
         void forwardCalc(Tensor *prevA);
