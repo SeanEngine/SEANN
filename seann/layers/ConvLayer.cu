@@ -44,14 +44,9 @@ namespace seann {
             recBiases();
             return;
         }
-
-        if(strcmp(prev->TYPE,"CONV")==0){
-            auto* proc = (ConvLayer*)prev;
-            backwardCalc(proc->z, proc->errors);
-            recFilters(proc->a);
-            recBiases();
-            return;
-        }
+        backwardCalc(prev->z, prev->errors);
+        recFilters(prev->a);
+        recBiases();
     }
 
     void ConvLayer::learn(float LEARNING_RATE, uint32 BATCH_SIZE) {

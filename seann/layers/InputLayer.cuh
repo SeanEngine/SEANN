@@ -11,7 +11,7 @@
 namespace seann {
     class InputLayer : public Layer {
         public:
-        InputLayer() : Layer(){
+        InputLayer(){
             TYPE = "INPUT";
         }
     };

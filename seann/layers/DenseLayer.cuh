@@ -14,7 +14,6 @@ namespace seann {
     class DenseLayer : public Layer {
     public:
         Tensor *weights, *biases, *deltaWeights, *deltaBiases;
-        Tensor *z, *errors;
 
         DenseLayer(unsigned int inputSize, unsigned int outputSize) {
             TYPE = "DENSE";

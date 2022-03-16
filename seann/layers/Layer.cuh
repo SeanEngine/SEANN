@@ -18,10 +18,8 @@ namespace seann {
     class Layer {
     public:
         Layer *prev{};
-        Tensor *a{};    //the activation values of each layer
+        Tensor *a{}, *errors{}, *z{};    //the activation values of each layer
         const char *TYPE{};
-
-        Layer() = default;
 
         Layer *bind(Layer *pLayer);
 

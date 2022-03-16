@@ -13,7 +13,6 @@ namespace seann {
     class ConvLayer : public Layer {
     public:
         Tensor *filters, *biases, *deltaFilters, *deltaBiases, *buffer;
-        Tensor *z, *errors;
         bool enableBias;
 
         int strideH, strideW, padH, padW;

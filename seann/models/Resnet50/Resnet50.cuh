@@ -9,6 +9,7 @@
 
 namespace seann {
     class Resnet50 : public Model {
+    public:
 
     };
 }

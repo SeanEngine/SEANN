@@ -14,7 +14,12 @@ namespace seann {
     }
 
     void DenseLayer::backwardCalc(Tensor *prevError, Tensor *prevZ) const {
+        shape4 shape = prevError->dims;
+        prevError->reshape(shape.size, 1);
+        prevZ->reshape(shape.size, 1);
         *sgemmTN(weights, errors, prevError) * reluDerive(prevZ);
+        prevError->reshape(shape);
+        prevZ->reshape(shape);
     }
 
     void DenseLayer::backwardCalcOut(Tensor *correct) const {
@@ -22,7 +27,10 @@ namespace seann {
     }
 
     void DenseLayer::recWeights(Tensor *prevA) const {
+        shape4 shape = prevA->dims;
+        prevA->reshape(shape.size, 1);
         sgemmNTA(errors, prevA, deltaWeights);
+        prevA->reshape(shape);
     }
 
     void DenseLayer::recBiases() const {
@@ -48,21 +56,9 @@ namespace seann {
             return;
         }
 
-        if (strcmp(prev->TYPE, "DENSE") == 0) {
-            auto *proc = (DenseLayer *) prev;
-            backwardCalc(proc->errors, proc->z);
-            recWeights(proc->a);
-            recBiases();
-            return;
-        }
-
-        if (strcmp(prev->TYPE, "CONV") == 0) {
-            auto *proc = (ConvLayer *) prev;
-            backwardCalc(proc->errors, proc->z);
-            recWeights(proc->a);
-            recBiases();
-            return;
-        }
+        backwardCalc(prev->errors, prev->z);
+        recWeights(prev->a);
+        recBiases();
     }
 
     void DenseLayer::backwardOut(Tensor *correct) {

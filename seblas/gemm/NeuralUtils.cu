@@ -522,6 +522,63 @@ namespace seblas{
         }
     }
 
+    __global__ void maxPoolD(Tensor* input, Tensor* output, Tensor* record, uint32 stride){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if(idx > output->dims.cols || idy > output->dims.rows) return;
+
+        #pragma unroll
+        for(uint32 channel = 0; channel < output->dims.c; channel++){
+            float max = -FLT_MAX;
+            uint32 recR = 0;
+            uint32 recC = 0;
+            #pragma unroll
+            for(uint32 row = idy * stride; row < (idy + 1) * stride; row++){
+                #pragma unroll
+                for(uint32 col = idx * stride; col < (idx + 1) * stride; col++){
+                    float val = input->get(channel, row, col);
+                    if(val > max){
+                        max = val;
+                        recR = row;
+                        recC = col;
+                    }
+                }
+            }
+
+            record->set(1.0f , channel, recR, recC);
+            output->set(max, channel, idy, idx);
+        }
+    }
+
+    __global__ void maxPoolDeriveD(Tensor* input, Tensor* record, Tensor* output, uint32 stride){
+        uint32 idx = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32 idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if(idx > input->dims.cols || idy > input->dims.rows) return;
+
+        #pragma unroll
+        for(uint32 channel = 0; channel < input->dims.c; channel++){
+            float max = -FLT_MAX;
+            uint32 recR = 0;
+            uint32 recC = 8;
+            #pragma unroll
+            for(uint32 row = idy * stride; row < (idy + 1) * stride; row++){
+                #pragma unroll
+                for(uint32 col = idx * stride; col < (idx + 1) * stride; col++){
+                    float val = record->get(channel, row, col);
+                    if(val > max){
+                        max = val;
+                        recR = row;
+                        recC = col;
+                    }
+                }
+            }
+
+            output->set(input->get(channel, recR, recC), channel, idy, idx);
+        }
+    }
+
     Tensor* relu(Tensor* input, Tensor* output){
         uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
         uint32 grid = topOff(input->dims.size, block);
@@ -779,5 +836,31 @@ namespace seblas{
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
         return deltaBiases;
+    }
+
+    Tensor* maxPool(Tensor* input, Tensor* output, Tensor* record, uint32 stride){
+        assert(input->dims.c == output->dims.c);
+        assert(input->dims.rows == record->dims.rows * stride);
+        assert(input->dims.cols == record->dims.cols * stride);
+
+        dim3 grid = dim3(topOff(output->dims.cols, CUDA_BLOCK_SIZE.x),
+                           topOff(output->dims.rows, CUDA_BLOCK_SIZE.y));
+        maxPoolD<<<grid, CUDA_BLOCK_SIZE>>>(input, output, record, stride);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return output;
+    }
+
+    Tensor* maxPoolDerive(Tensor* input, Tensor* output, Tensor* record, uint32 stride){
+        assert(input->dims.c == output->dims.c);
+        assert(input->dims.rows * stride == record->dims.rows);
+        assert(input->dims.cols * stride == record->dims.cols);
+
+        dim3 grid = dim3(topOff(input->dims.cols, CUDA_BLOCK_SIZE.x),
+                           topOff(input->dims.rows, CUDA_BLOCK_SIZE.y));
+        maxPoolDeriveD<<<grid, CUDA_BLOCK_SIZE>>>(input, record, output, stride);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return output;
     }
 }

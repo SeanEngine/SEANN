@@ -36,6 +36,9 @@ namespace seblas {
 
     //CE -> Cross Entropy, Uses only as the output layer
     Tensor* softmaxDeriveCE(Tensor* input, Tensor* target, Tensor* output);
+
+    Tensor* maxPool(Tensor* input, Tensor* output, Tensor* record, uint32 stride);
+    Tensor* maxPoolDerive(Tensor* input, Tensor* output, Tensor* record, uint32 stride);
 }
 
 #endif //SEANN_NEURALUTILS_CUH
