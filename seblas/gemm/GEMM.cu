@@ -1578,15 +1578,17 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
 
     // MatA: OC, IC * FH * FW; MatB: IC * FH * FW, OH * OW; Mat C: OC, OH * OW
     ///insert parameters
-    unsigned const int M = A->dims.n;
-    unsigned const int K = A->dims.c * A->dims.rows * A->dims.cols;
-    unsigned const int N = C->dims.rows * C->dims.cols;
+    const uint32 M = A->dims.n;
+    const uint32 K = A->dims.c * A->dims.rows * A->dims.cols;
+    const uint32 N = C->dims.n * C->dims.rows * C->dims.cols;
 
-    unsigned const int FH = A->dims.rows;
-    unsigned const int FW = A->dims.cols;
-    unsigned const int IH = B->dims.rows;
-    unsigned const int IW = B->dims.cols;
-    unsigned const int OW = C->dims.cols;
+    const uint32 FH = A->dims.rows;
+    const uint32 FW = A->dims.cols;
+    const uint32 IC = B->dims.c;
+    const uint32 IH = B->dims.rows;
+    const uint32 IW = B->dims.cols;
+    const uint32 OH = C->dims.rows;
+    const uint32 OW = C->dims.cols;
 
     ///allocate smems and registers
     //The shared memory tile
@@ -1641,15 +1643,17 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
         if(readRowB + i< K && blockN + readColB < N){
 
             //map buffer matrix cords to the 3 dimensional feature cords
-            int oh = (blockN + readColB)/OW;
-            int ow = (blockN + readColB)%OW;
+            int in = (readColB + blockN) / (OH * OW);
+            int oh = ((readColB + blockN) % (OH * OW))/OW;
+            int ow = ((readColB + blockN) % (OH * OW))%OW;
             int ic = (readRowB + i)/(FH * FW);
             int fh = ((readRowB + i)%(FH * FW))/FW;
             int fw = ((readRowB + i)%(FH * FW))%FW;
             int ih = oh * strideH - padH + fh;
             int iw = ow * strideW - padW + fw;
             //do memory access
-            tileB[0][readRowB+i][readColB] = ih >= 0 && iw >= 0 && ih < IH && iw < IW ? ptrB[ic * IH * IW + ih * IW + iw] : 0;
+            tileB[0][readRowB+i][readColB] = ih >= 0 && iw >= 0 && ih < IH && iw < IW ?
+                    ptrB[in * IC * IH * IW + ic * IH * IW + ih * IW + iw] : 0;
         }
     }
     __syncthreads();
@@ -1683,8 +1687,9 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
 
                 //calculate remapping
                 int loadIndex = i / readRowStrideB;
-                int oh = (blockN + readColB)/OW;
-                int ow = (blockN + readColB)%OW;
+                int in = (readColB + blockN) / (OH * OW);
+                int oh = ((readColB + blockN) % (OH * OW))/OW;
+                int ow = ((readColB + blockN) % (OH * OW))%OW;
                 int ic = (readRowB + i + nextTileID)/(FH * FW);
                 int fh = ((readRowB + i + nextTileID)%(FH * FW))/FW;
                 int fw = ((readRowB + i + nextTileID)%(FH * FW))%FW;
@@ -1693,7 +1698,7 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
 
                 //do memory access
                 bufferB[loadIndex] = (readRowB + i + nextTileID < K && blockN + readColB < N) && (ih >= 0 && iw >= 0)
-                        && (ih < IH && iw < IW)? ptrB[ic * IH * IW + ih * IW + iw] : 0;
+                        && (ih < IH && iw < IW)? ptrB[in * IC * IH * IW + ic * IH * IW + ih * IW + iw] : 0;
             }
         }
 
@@ -1793,16 +1798,17 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
 template<const int BLOCK_M, const int BLOCK_N, const int BLOCK_K,
         const int REGIS_M, const int REGIS_N>
 __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW) {
-     unsigned const int K = A->dims.n; //OC
-     unsigned const int M = A->dims.c * A->dims.rows * A->dims.cols;  //FH * FW * IC
-     unsigned const int N = C->dims.rows * C->dims.cols; //HW
+     const uint32 K = A->dims.n; //OC
+     const uint32 M = A->dims.c * A->dims.rows * A->dims.cols;  //FH * FW * IC
+     const uint32 N = B->dims.rows * B->dims.cols * B->dims.n; //HW
 
-    unsigned const int FH = A->dims.rows;
-    unsigned const int FW = A->dims.cols;
-    unsigned const int IH = C->dims.rows;
-    unsigned const int IW = C->dims.cols;
-    unsigned const int OW = B->dims.cols;
-    unsigned const int IC = A->dims.c;
+    const uint32 FH = A->dims.rows;
+    const uint32 FW = A->dims.cols;
+    const uint32 IH = C->dims.rows;
+    const uint32 IW = C->dims.cols;
+    const uint32 OW = B->dims.cols;
+    const uint32 OH = B->dims.rows;
+    const uint32 IC = A->dims.c;
 
     ///allocate smems and registers
     //The shared memory tile
@@ -1868,7 +1874,6 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int stride
     for(int rn = 0; rn < REGIS_N; rn += 4){
         toFloat4R(regisB[0][rn]) = toFloat4R(tileB[0][0][REGIS_N * threadIdx.x + rn]);
     }
-
 
     ///main loop
     int writeStageFlag = 1;
@@ -1961,8 +1966,10 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int stride
     for(int rm = 0; rm < REGIS_M; rm++){
         for(int rn = 0; rn < REGIS_N; rn++){
             //calculate remapping
-            int oh = (blockN + threadIdx.x * REGIS_N + rn)/OW;
-            int ow = (blockN + threadIdx.x * REGIS_N + rn)%OW;
+            int in = (blockN + threadIdx.x * REGIS_N + rn)/(OH * OW);
+            int res = (blockN + threadIdx.x * REGIS_N + rn) % (OH * OW);
+            int oh = res/(int)OW;
+            int ow = res%(int)OW;
             int ic = (blockM + threadIdx.y * REGIS_M + rm)/(FH * FW);
             int fh = ((blockM + threadIdx.y * REGIS_M + rm)%(FH * FW))/FW;
             int fw = ((blockM + threadIdx.y * REGIS_M + rm)%(FH * FW))%FW;
@@ -1970,7 +1977,8 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int stride
             int iw = ow * strideW - padW + fw;
 
             if(ih >= 0 && ih < IH && iw >= 0 && iw < IW && ic >= 0 && ic < IC){
-                atomicAdd(C->elements + ic * IW * IH + ih * IW + iw, regisC[rm][rn]);
+                atomicAdd(C->elements + in * IC * IH * IW +
+                ic * IW * IH + ih * IW + iw, regisC[rm][rn]);
             }
         }
     }
@@ -2001,12 +2009,12 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
     unsigned int N = C->dims.c * C->dims.rows * C->dims.cols;
     unsigned int K = A->dims.rows * A->dims.cols;
 
-    unsigned const int FH = A->dims.rows;
-    unsigned const int FW = A->dims.cols;
-    unsigned const int IH = B->dims.rows;
-    unsigned const int IW = B->dims.cols;
-    unsigned const int OW = C->dims.cols;
-    unsigned const int OH = C->dims.rows;
+    const uint32 FH = A->dims.rows;
+    const uint32 FW = A->dims.cols;
+    const uint32 IH = B->dims.rows;
+    const uint32 IW = B->dims.cols;
+    const uint32 OW = C->dims.cols;
+    const uint32 OH = C->dims.rows;
 
     ///allocate smems and registers
     //The shared memory tile
@@ -2202,7 +2210,7 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, 
     assert(C->dims.c == A->dims.n && B->dims.c == A->dims.c);
 
     uint32 M = A->dims.n;
-    uint32 N = C->dims.rows * C->dims.cols;
+    uint32 N = C->dims.rows * C->dims.cols * C->dims.n;
 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
@@ -2220,7 +2228,7 @@ Tensor* seblas::convDerive(Tensor *A, Tensor *B, Tensor *C, int strideH, int str
     assert(B->dims.c == A->dims.n && C->dims.c == A->dims.c);
 
     uint32 M = A->dims.cols * A->dims.rows * A->dims.c;
-    uint32 N = B->dims.rows * B->dims.cols;
+    uint32 N = B->dims.rows * B->dims.cols * B->dims.c;
 
     dim3 grid = dim3((N + BN - 1) / BN, (M + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);

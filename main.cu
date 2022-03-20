@@ -20,6 +20,23 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    logInfo(seio::LOG_SEG_SEANN, "Test");
-    return 0;
+    Tensor* input1 = readRGBSquare(R"(C:\Users\DanielSun\Desktop\resources\mnist\decompress_mnist\train\0\0.bmp)"
+            , shape4(1,3,28,28));
+    Tensor* input2 = readRGBSquare(R"(C:\Users\DanielSun\Desktop\resources\mnist\decompress_mnist\train\0\1.bmp)"
+            , shape4(1,3,28,28));
+
+    Tensor* input = Tensor::declare(2,3,28,28)->create();
+    cudaMemcpy(input->elements, input1->elements, input1->dims.size * sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(input->elements + input2->dims.size, input2->elements, input2->dims.size * sizeof(float), cudaMemcpyDeviceToDevice);
+    Tensor* output = Tensor::declare(2,3,28,28)->create();
+
+    Tensor* mean = Tensor::declare(1,3,28,28)->create();
+    Tensor* variance = Tensor::declare(1,3,28,28)->create();
+
+    Tensor* gamma = Tensor::declare(3,1)->create()->constFill(1);
+    Tensor* beta = Tensor::declare(3,1)->create()->constFill(0);
+
+    batchNormConv(input, output, mean, variance, gamma, beta, 1e-3);
+
+    inspect(output);
 }

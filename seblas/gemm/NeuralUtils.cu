@@ -9,6 +9,7 @@
 #define sigmoidCalc(x) (1.0f / (1.0f + expf(-x)))
 #define tanhCalc(x) (expf(x) - expf(-x) / (expf(x) + expf(-x)))
 #define topOff(a,b) (a + b - 1)/(b)
+#define BATCH_MAX 128
 
 namespace seblas{
 
@@ -579,6 +580,105 @@ namespace seblas{
         }
     }
 
+    template<const int BATCH_SIZE_MAX>
+    __global__ void batchNormD(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance,
+                                  Tensor* gamma, Tensor* beta, float epsilon){
+        uint32 globalId = blockIdx.x * blockDim.x + threadIdx.x;
+        if(globalId >= input->dims.size/input->dims.n) return;
+
+        float elements[BATCH_SIZE_MAX] = {0};
+        float meanVal = 0;
+        float varianceVal = 0;
+        uint32 batchSize = input->dims.n;
+        uint32 unitSize = input->dims.size / batchSize; //the size of the features for each sample
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            elements[i] = input->elements[i * unitSize + globalId];
+        }
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            meanVal += elements[i];
+        }
+        meanVal /= (float)batchSize;
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            varianceVal += (elements[i] - meanVal) * (elements[i] - meanVal);
+        }
+        varianceVal /= (float)batchSize;
+
+        //calculate linear transformation
+        float gammaVal = gamma->elements[globalId];
+        float betaVal = beta->elements[globalId];
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            elements[i] = (elements[i] - meanVal) / sqrt(varianceVal + epsilon) * gammaVal + betaVal;
+        }
+
+        mean->elements[globalId] = meanVal;
+        variance->elements[globalId] = varianceVal;
+
+        //store the outputs
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            output->elements[i * unitSize + globalId] = elements[i];
+        }
+    }
+
+    template<const int BATCH_SIZE_MAX>
+    __global__ void batchNormConvD(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance,
+                                   Tensor* gamma, Tensor* beta, float epsilon){
+        uint32 globalId = blockIdx.x * blockDim.x + threadIdx.x;
+        if(globalId >= input->dims.size/input->dims.n) return;
+
+        float elements[BATCH_SIZE_MAX] = {0};
+        float meanVal = 0;
+        float varianceVal = 0;
+        uint32 feature2DSize = input->dims.rows * input->dims.cols;
+        uint32 batchSize = input->dims.n;
+        uint32 unitSize = input->dims.size / batchSize; //the size of the features for each sample
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            elements[i] = input->elements[i * unitSize + globalId];
+        }
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            meanVal += elements[i];
+        }
+        meanVal /= (float)batchSize;
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            varianceVal += (elements[i] - meanVal) * (elements[i] - meanVal);
+        }
+        varianceVal /= (float)batchSize;
+
+        //calculate linear transformation
+        //since in conv nets gamma and beta values are shared among all elements from the same conv filter
+        float gammaVal = gamma->elements[globalId / feature2DSize];
+        float betaVal = beta->elements[globalId / feature2DSize];
+
+
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            elements[i] = (elements[i] - meanVal) / sqrt(varianceVal + epsilon) * gammaVal + betaVal;
+        }
+
+        mean->elements[globalId] = meanVal;
+        variance->elements[globalId] = varianceVal;
+
+        //store the outputs
+        #pragma unroll
+        for(uint32 i = 0; i < batchSize; i++){
+            output->elements[i * unitSize + globalId] = elements[i];
+        }
+    }
+
     Tensor* relu(Tensor* input, Tensor* output){
         uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
         uint32 grid = topOff(input->dims.size, block);
@@ -859,6 +959,38 @@ namespace seblas{
         dim3 grid = dim3(topOff(input->dims.cols, CUDA_BLOCK_SIZE.x),
                            topOff(input->dims.rows, CUDA_BLOCK_SIZE.y));
         maxPoolDeriveD<<<grid, CUDA_BLOCK_SIZE>>>(input, record, output, stride);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return output;
+    }
+
+    Tensor* batchNorm(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance,
+                      Tensor* gamma, Tensor* beta, float epsilon){
+        assert(input->dims == output->dims);
+        assert(mean->dims == variance->dims && mean->dims == gamma->dims
+            && mean->dims == beta->dims);
+        assert(input->dims.c <= BATCH_MAX);
+
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size/input->dims.n, block);
+
+        batchNormD<BATCH_MAX><<<grid, block>>>(input, output, mean, variance, gamma, beta, epsilon);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+        return output;
+    }
+
+    Tensor* batchNormConv(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance,
+                          Tensor* gamma, Tensor* beta, float epsilon) {
+        assert(input->dims == output->dims);
+        assert(mean->dims == variance->dims);
+        assert(beta->dims == gamma->dims && beta->dims.rows == input->dims.c);
+        assert(input->dims.c <= BATCH_MAX);
+
+        uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
+        uint32 grid = topOff(input->dims.size/input->dims.n, block);
+
+        batchNormConvD<BATCH_MAX><<<grid, block>>>(input, output, mean, variance, gamma, beta, epsilon);
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
         return output;

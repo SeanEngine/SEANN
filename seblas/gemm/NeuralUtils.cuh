@@ -39,6 +39,10 @@ namespace seblas {
 
     Tensor* maxPool(Tensor* input, Tensor* output, Tensor* record, uint32 stride);
     Tensor* maxPoolDerive(Tensor* input, Tensor* output, Tensor* record, uint32 stride);
+
+    //for batch normalization
+    Tensor* batchNorm(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance, Tensor* gamma, Tensor* beta, float epsilon);
+    Tensor* batchNormConv(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance, Tensor* gamma, Tensor* beta, float epsilon);
 }
 
 #endif //SEANN_NEURALUTILS_CUH
