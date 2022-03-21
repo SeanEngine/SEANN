@@ -6,7 +6,7 @@
 #define SEANN_SOFTMAXOUTLAYER_CUH
 
 #include "DenseLayer.cuh"
-#include "../../seblas/gemm/TensorTools.cuh"
+#include "../../../seblas/gemm/TensorTools.cuh"
 
 namespace seann{
     class SoftmaxOutLayer : public DenseLayer {

@@ -5,9 +5,17 @@
 #ifndef SEANN_MODEL_CUH
 #define SEANN_MODEL_CUH
 
-#include "../layers/Layer.cuh"
+#include "../layers/std/Layer.cuh"
+#include "../../seio/logging/LogUtils.cuh"
 #include "Config.cuh"
+#include "../layers/std/InputLayer.cuh"
+#include "../layers/std/ConvLayer.cuh"
+#include "../layers/std/DenseLayer.cuh"
+#include "../layers/std/SoftmaxOutLayer.cuh"
+#include "../../seio/loader/DataLoader.cuh"
 
+
+using namespace seio;
 namespace seann {
     class Model {
     public:

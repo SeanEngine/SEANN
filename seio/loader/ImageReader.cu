@@ -7,24 +7,9 @@
 
 namespace seio{
 
-    /**
-     * The method that would process opencv mats in host memory to data tensors in device memory
-     * @param img the input image of cv::Mat
-     * @param data the output data
-     * @param decay a index that whether you choose to normalize the image
-     */
-    __global__ void mat2tensor(const uchar* elements, shape4 dims, Tensor* data, float decay){
-        unsigned int col = threadIdx.x + blockDim.x * blockIdx.x;
-        unsigned int row = threadIdx.y + blockDim.y * blockIdx.y;
-        unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
-        uchar element = col < dims.cols && row < dims.rows && depth < dims.c
-                        ? elements[(row * dims.cols + col)*dims.c + depth] : 0;
-        data->set((float)element * decay, depth, row, col);
-    }
-
     //TODO: Optimize this and prevent any malloc in loops
-    Tensor* seio::readRGBSquare(const char *path, shape4 dimensions) {
-        auto* output = Tensor::declare(dimensions)->create();
+    Tensor* readRGB(const char *path, Tensor* reserved) {
+
         cv::Mat procImage = cv::imread(path, cv::IMREAD_COLOR);
         int h = procImage.size().height;
         int w = procImage.size().width;
@@ -32,22 +17,30 @@ namespace seio{
         procImage = procImage(cv::Range((h - smallDim) / 2, h - (h - smallDim) / 2),
                               cv::Range((w - smallDim) / 2, w - (w - smallDim) / 2));
         cv::Mat in;
-        cv::resize(procImage, in, cv::Size((int)dimensions.rows, (int)dimensions.cols), cv::INTER_LINEAR);
+        cv::resize(procImage, in, cv::Size((int)reserved->dims.rows, (int)reserved->dims.cols), cv::INTER_LINEAR);
 
-        uchar* elements;
-        cudaMalloc(&elements, dimensions.size * sizeof(uchar));
-        cudaMemcpy(elements, in.data, dimensions.size * sizeof(uchar), cudaMemcpyHostToDevice);
+        for(int c = 0; c < reserved->dims.c; c++){
+            for(int i = 0; i < reserved->dims.rows; i++){
+                for(int j = 0; j < reserved->dims.cols; j++){
+                    reserved->elements[c * reserved->dims.rows * reserved->dims.cols + i * reserved->dims.cols + j] =
+                            (float)in.at<cv::Vec3b>(i, j)[c] * RGB_DECAY;
+                }
+            }
+        }
 
-        unsigned int blockDim = CUDA_BLOCK_SIZE.x;
-        unsigned int blockDepth =  CUDA_BLOCK_SIZE.z;
-        dim3 block = CUDA_BLOCK_SIZE;
-        dim3 grid = dim3((dimensions.cols + blockDim - 1)/blockDim,
-                          (dimensions.rows + blockDim - 1)/blockDim,
-                         (dimensions.c + blockDepth - 1) / blockDepth);
-        mat2tensor<<<grid,block>>>(elements,dimensions,output,RGB_DECAY);
-        cudaDeviceSynchronize();
-        cudaFree(elements);
-        ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
-        return output;
+        return reserved;
+    }
+
+    void loadBinFile(const char *path, uchar *buffer, uint32 size) {
+        FILE* file = fopen(path, "rb");
+        fread(buffer, sizeof(uchar), size, file);
+        fclose(file);
+    }
+
+    Tensor* readBinRGB(const uchar* target, Tensor* reserved){
+        for (int i = 0; i < reserved->dims.size; i++) {
+            reserved->elements[i] = (float)target[i] * RGB_DECAY;
+        }
+        return reserved;
     }
 }

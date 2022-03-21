@@ -11,7 +11,11 @@
 using namespace seblas;
 
 namespace seio{
-    Tensor* readRGBSquare(const char* path, shape4 dimensions);
+    Tensor* readRGB(const char* path, Tensor* reserved);
+
+    void loadBinFile(const char* path, uchar* buffer, uint32 size);
+
+    Tensor* readBinRGB(const uchar* target, Tensor* reserved);
 }
 
 #endif //SEANN_IMAGEREADER_CUH

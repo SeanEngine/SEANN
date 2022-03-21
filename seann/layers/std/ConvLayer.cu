@@ -53,4 +53,8 @@ namespace seann {
         applyFilters(LEARNING_RATE, BATCH_SIZE);
         applyBiases(LEARNING_RATE, BATCH_SIZE);
     }
+
+    void ConvLayer::backwardOut(Tensor *correct) {
+
+    }
 }

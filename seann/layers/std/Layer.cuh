@@ -5,11 +5,11 @@
 #ifndef SEANN_LAYER_CUH
 #define SEANN_LAYER_CUH
 
-#include "../../seblas/gemm/Tensor.cuh"
-#include "../../seblas/gemm/TensorTools.cuh"
-#include "../../seblas/gemm/GEMM.cuh"
-#include "../../seblas/gemm/NeuralUtils.cuh"
-#include "../../seio/logging/LogUtils.cuh"
+#include "../../../seblas/gemm/Tensor.cuh"
+#include "../../../seblas/gemm/TensorTools.cuh"
+#include "../../../seblas/gemm/GEMM.cuh"
+#include "../../../seblas/gemm/NeuralUtils.cuh"
+#include "../../../seio/logging/LogUtils.cuh"
 
 
 using namespace seblas;
