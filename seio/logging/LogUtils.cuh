@@ -25,13 +25,32 @@ namespace seio {
         LOG_SEG_SEBLAS = 2,
     };
 
+    enum LogColor {
+        LOG_COLOR_RED,
+        LOG_COLOR_LIGHT_RED,
+        LOG_COLOR_GREEN,
+        LOG_COLOR_LIGHT_GREEN,
+        LOG_COLOR_YELLOW,
+        LOG_COLOR_LIGHT_YELLOW,
+        LOG_COLOR_BLUE,
+        LOG_COLOR_LIGHT_BLUE,
+        LOG_COLOR_AQUA,
+        LOG_COLOR_LIGHT_AQUA,
+        LOG_COLOR_PURPLE,
+        LOG_COLOR_LIGHT_PURPLE,
+        LOG_COLOR_WHITE,
+        LOG_COLOR_BRIGHT_WHITE,
+    };
+
     void printLogHead(LogLevel level, LogSegments segment);
 
     void logInfo(LogSegments seg, string msg);
+    void logInfo(LogSegments seg, const string& msg, LogColor color);
 
     void logDebug(LogSegments seg, string msg);
+    void logDebug(LogSegments seg, const string& msg, LogColor color);
 
-    void logWarn(LogSegments seg, string msg);
+        void logWarn(LogSegments seg, string msg);
 
     void logError(LogSegments seg, string msg);
 

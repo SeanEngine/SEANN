@@ -58,14 +58,76 @@ namespace seio {
             cout<<dye::purple(": ")<<levelPrefix<<dye::purple(" >>> ");
     }
 
+    void printColored(const string& msg, LogColor color){
+        switch(color){
+            case LOG_COLOR_RED:
+                cout<<dye::red(msg);
+                break;
+            case LOG_COLOR_GREEN:
+                cout<<dye::green(msg);
+                break;
+            case LOG_COLOR_YELLOW:
+                cout<<dye::yellow(msg);
+                break;
+            case LOG_COLOR_BLUE:
+                cout<<dye::blue(msg);
+                break;
+            case LOG_COLOR_PURPLE:
+                cout<<dye::purple(msg);
+                break;
+            case LOG_COLOR_AQUA:
+                cout<<dye::aqua(msg);
+                break;
+            case LOG_COLOR_WHITE:
+                cout<<dye::white(msg);
+                break;
+            case LOG_COLOR_LIGHT_RED:
+                cout<<dye::light_red(msg);
+                break;
+            case LOG_COLOR_LIGHT_GREEN:
+                cout<<dye::light_green(msg);
+                break;
+            case LOG_COLOR_LIGHT_YELLOW:
+                cout<<dye::light_yellow(msg);
+                break;
+            case LOG_COLOR_LIGHT_BLUE:
+                cout<<dye::light_blue(msg);
+                break;
+            case LOG_COLOR_LIGHT_PURPLE:
+                cout<<dye::light_purple(msg);
+                break;
+            case LOG_COLOR_LIGHT_AQUA:
+                cout<<dye::light_aqua(msg);
+                break;
+            case LOG_COLOR_BRIGHT_WHITE:
+                cout<<dye::bright_white(msg);
+                break;
+            default:
+                cout<<msg;
+                break;
+        }
+    }
+
     void logInfo(LogSegments segment, string msg){
         printLogHead(LogLevel::LOG_LEVEL_INFO, segment);
         cout<<dye::blue(std::move(msg))<<endl;
     }
 
+    void logInfo(LogSegments seg, const string& msg, LogColor color){
+        printLogHead(LogLevel::LOG_LEVEL_INFO, seg);
+        printColored(msg, color);
+        cout<<endl;
+    }
+
     void logDebug(LogSegments seg, string msg){
         printLogHead(LogLevel::LOG_LEVEL_DEBUG, seg);
         cout<<dye::aqua(std::move(msg))<<endl;
+    }
+
+    void logDebug(LogSegments seg, const string& msg, LogColor color){
+        printLogHead(LogLevel::LOG_LEVEL_DEBUG, seg);
+        printColored(msg, color);
+        cout<<endl;
     }
 
     void logWarn(LogSegments seg, string msg){

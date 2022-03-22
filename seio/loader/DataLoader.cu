@@ -40,7 +40,8 @@ namespace seio{
         cudaMallocHost(&data, sizeof(uchar) * dataset->size() * (LABEL_OFFSET + DATA_OFFSET));
         uint32 stride = (dataset->size() / filenames.size()) * (LABEL_OFFSET + DATA_OFFSET);
         for(int i = 0; i < filenames.size(); i++){
-            logDebug(LOG_SEG_SEIO, "Fetching CIFAR10 binary datafile : " + filenames[i]);
+            logDebug(LOG_SEG_SEIO, "Fetching CIFAR10 binary datafile : " + filenames[i],
+                     LOG_COLOR_LIGHT_YELLOW);
             loadBinFile(filenames[i].c_str(), data + i * stride, stride);
         }
         _alloc<CPU_THREADS>(fetchDataBinThread, dataset, labels, data, LABEL_OFFSET, DATA_OFFSET);

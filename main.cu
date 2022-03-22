@@ -14,6 +14,8 @@
 #include "seio/logging/LogUtils.cuh"
 #include "sexec/threading/ThreadController.cuh"
 #include "seann/models/testModel/ConvSTD.cuh"
+#include "seblas/gemm/Initializers.cuh"
+
 #pragma comment(lib, "cublas.lib")
 
 using namespace sexec;
@@ -23,8 +25,7 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-
-    auto* model = new ConvSTD();
-    model->registerModel();
-    model->loadDataset();
+    auto* A = Tensor::declare(6,6)->create();
+    randNormal(A, 0, 1, 1);
+    inspect(A);
 }
