@@ -5,7 +5,7 @@
 #include "ConvSTD.cuh"
 
 void seann::ConvSTD::registerModel() {
-    logInfo(LOG_SEG_SEANN, "------< Registering model : ConvSTD >------");
+    logInfo(LOG_SEG_SEANN, "------< Registering model : ConvSTD >------", LOG_COLOR_LIGHT_PURPLE);
     layers.push_back(new InputLayer());
     layers.push_back(new ConvLayer(shape4(8, 3, 3, 3), 32, 32, 1, 1, 1, 1, true));
     layers.push_back(new ConvLayer(shape4(8, 8, 3, 3), 32, 32, 1, 1, 1, 1, true));
