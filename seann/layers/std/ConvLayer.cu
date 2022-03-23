@@ -57,4 +57,12 @@ namespace seann {
     void ConvLayer::backwardOut(Tensor *correct) {
 
     }
+
+    void ConvLayer::initialize() {
+        logDebug(LOG_SEG_SEANN, "CONV initialized with rand normal");
+        uint32 K = filters->dims.size / filters->dims.n;
+        randNormal(filters, 0, (float)sqrt(2.0 / (float) K));
+        if (enableBias)
+            randNormal(biases, 0, (float)sqrt(2.0 / (float) filters->dims.n));
+    }
 }

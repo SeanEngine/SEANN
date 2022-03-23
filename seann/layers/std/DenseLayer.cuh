@@ -51,6 +51,8 @@ namespace seann {
 
         void applyBiases(uint32 BATCH_SIZE, float LEARNING_RATE) const;
 
+        void initialize() override;
+
         //universal methods
         void forward(Layer *prev) override;
 

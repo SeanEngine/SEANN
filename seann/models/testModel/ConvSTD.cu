@@ -41,10 +41,6 @@ void seann::ConvSTD::saveModel() {
 
 }
 
-void seann::ConvSTD::initModel() {
-
-}
-
 float seann::ConvSTD::calcSampleCost(Tensor *label) {
     return 0;
 }

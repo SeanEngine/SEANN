@@ -35,7 +35,7 @@ namespace seann {
 
         virtual void saveModel() = 0;
 
-        virtual void initModel() = 0;
+        virtual void initModel();
 
         void prepareBatch(Config conf);
 

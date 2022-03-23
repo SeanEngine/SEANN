@@ -113,5 +113,13 @@ namespace seann {
             loadThread.join();
         }
     }
+
+    void Model::initModel() {
+        logInfo(LOG_SEG_SEANN, "Initializing model...", seio::LOG_COLOR_LIGHT_PURPLE);
+        for (uint32 i = 1; i < layers.size(); i++) {
+            layers[i]->bind(layers[i-1]);
+            layers[i]->initialize();
+        }
+    }
 }
 

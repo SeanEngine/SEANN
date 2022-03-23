@@ -15,7 +15,7 @@ namespace seio {
                 segName = dye::bright_white("seann");
                 break;
             case LogSegments::LOG_SEG_SEIO:
-                segName = dye::light_purple("seio");
+                segName = dye::light_green("seio");
                 break;
             case LogSegments::LOG_SEG_SEBLAS:
                 segName = dye::light_yellow("seblas");
@@ -25,7 +25,7 @@ namespace seio {
         dye::colorful<basic_string<char>> levelPrefix;
         switch(level){
             case LogLevel::LOG_LEVEL_DEBUG:
-                levelPrefix = dye::light_aqua("DEBUG");
+                levelPrefix = dye::light_purple("DEBUG");
                 break;
             case LogLevel::LOG_LEVEL_INFO:
                 levelPrefix = dye::light_blue("INFO");
@@ -45,17 +45,17 @@ namespace seio {
         struct tm *local = localtime(&secs);
 
         //print the current time
-        cout<<dye::aqua("[")<<dye::light_red(local->tm_hour)<<dye::light_aqua(":")
-        <<dye::light_red(local->tm_min)<<dye::light_aqua(":")<<dye::light_red(local->tm_sec);
+        cout<<dye::light_green("[")<<dye::light_red(local->tm_hour)<<dye::light_green(":")
+        <<dye::light_red(local->tm_min)<<dye::light_green(":")<<dye::light_red(local->tm_sec);
 
         //print the log segment
-        cout<<dye::aqua("|")<<segName<<dye::aqua("]");
+        cout<<dye::light_green("|")<<segName<<dye::light_green("]");
 
         //print the log level
         if(level == LogLevel::LOG_LEVEL_ERROR || level == LogLevel::LOG_LEVEL_FATAL)
             cout<<dye::red(": ")<<levelPrefix<<dye::red(" >>> ");
         else
-            cout<<dye::purple(": ")<<levelPrefix<<dye::purple(" >>> ");
+            cout<<dye::light_purple(": ")<<levelPrefix<<dye::purple(" >>> ");
     }
 
     void printColored(const string& msg, LogColor color){
@@ -121,7 +121,7 @@ namespace seio {
 
     void logDebug(LogSegments seg, string msg){
         printLogHead(LogLevel::LOG_LEVEL_DEBUG, seg);
-        cout<<dye::aqua(std::move(msg))<<endl;
+        cout<<dye::purple(std::move(msg))<<endl;
     }
 
     void logDebug(LogSegments seg, const string& msg, LogColor color){

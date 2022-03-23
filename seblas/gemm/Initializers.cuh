@@ -6,13 +6,13 @@
 #define SEANN_INITIALIZERS_CUH
 
 #include "Tensor.cuh"
+#include <chrono>
 
+using namespace std::chrono;
 namespace seblas{
-    Tensor* randNormal(Tensor* A, float mean, float stddev, long seed);
+    Tensor* randNormal(Tensor* A, float mean, float stddev);
 
-    Tensor* randUniform(Tensor* A, float min, float max, long seed);
-
-
+    Tensor* randUniform(Tensor* A, float min, float max);
 }
 
 #endif //SEANN_INITIALIZERS_CUH

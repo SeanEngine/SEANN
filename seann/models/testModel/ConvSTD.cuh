@@ -18,8 +18,6 @@ namespace seann {
 
         void saveModel() override;
 
-        void initModel() override;
-
         float calcSampleCost(Tensor *label) override;
     };
 }

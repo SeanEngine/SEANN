@@ -69,6 +69,13 @@ namespace seann {
         applyWeights(BATCH_SIZE, LEARNING_RATE);
         applyBiases(BATCH_SIZE, LEARNING_RATE);
     }
+
+    void DenseLayer::initialize() {
+        logDebug(LOG_SEG_SEANN, "FC initialized with rand normal");
+        uint32 K = weights->dims.cols;
+        randNormal(weights, 0, (float)sqrt(2.0 / (float) K));
+        randNormal(biases, 0, (float)sqrt(2.0 / (float) biases->dims.size));
+    }
 }
 
 

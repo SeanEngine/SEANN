@@ -25,7 +25,10 @@ using namespace seio;
 using namespace std;
 
 int main(int argc, char **argv) {
-    auto* A = Tensor::declare(6,6)->create();
-    randNormal(A, 0, 1, 1);
-    inspect(A);
+    Model *model = new ConvSTD();
+    model->registerModel();
+    model->loadDataset();
+    model->initModel();
+
+    //inspect(((DenseLayer*)model->layers[12])->weights);
 }

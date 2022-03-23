@@ -17,4 +17,8 @@ namespace seann {
     void Layer::backward() {
         backward(prev);
     }
+
+    void Layer::initialize() {
+
+    }
 }

@@ -10,9 +10,12 @@
 #include "../../../seblas/gemm/GEMM.cuh"
 #include "../../../seblas/gemm/NeuralUtils.cuh"
 #include "../../../seio/logging/LogUtils.cuh"
+#include "../../../seblas/gemm/Initializers.cuh"
+#include <chrono>
 
 
 using namespace seblas;
+using namespace std::chrono;
 
 namespace seann {
     class Layer {
@@ -26,6 +29,8 @@ namespace seann {
         void forward();
 
         void backward();
+
+        virtual void initialize();
 
         // forward activation
         virtual void forward(Layer *prev) = 0;
