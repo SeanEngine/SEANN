@@ -37,7 +37,7 @@ namespace seio{
         fclose(file);
     }
 
-    Tensor* readBinRGB(const uchar* target, Tensor* reserved){
+    Tensor* readBinPixels(const uchar* target, Tensor* reserved){
         for (int i = 0; i < reserved->dims.size; i++) {
             reserved->elements[i] = (float)target[i] * RGB_DECAY;
         }

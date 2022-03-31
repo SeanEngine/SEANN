@@ -15,12 +15,12 @@ namespace seann{
         const char* TEST_DATA_PATH{};
         const char* MODEL_SAV_PATH{};
 
-        const uint32 BATCH_SIZE{};
-        const float LEARNING_RATE{};
-        const uint32 EPOCHS{};
+        const uint32 BATCH_SIZE = 100;
+        const float LEARNING_RATE = 0.03;
+        const uint32 EPOCHS = 500;
 
-        const shape4 DATA_SHAPE;
-        const shape4 LABEL_SHAPE;
+        const shape4 DATA_SHAPE = shape4(1,1,28,28);
+        const shape4 LABEL_SHAPE = shape4(10,1);
 
         const bool LOAD_MODEL_FROM_SAV = false;
     };

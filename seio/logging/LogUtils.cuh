@@ -7,10 +7,10 @@
 
 #include <string>
 #include "Color.cuh"
+
 using namespace std;
 
 namespace seio {
-
     enum LogLevel {
         LOG_LEVEL_DEBUG = 0,
         LOG_LEVEL_INFO = 1,
@@ -45,16 +45,23 @@ namespace seio {
     void printLogHead(LogLevel level, LogSegments segment);
 
     void logInfo(LogSegments seg, string msg);
-    void logInfo(LogSegments seg, const string& msg, LogColor color);
+
+    void logInfo(LogSegments seg, const string &msg, LogColor color);
 
     void logDebug(LogSegments seg, string msg);
-    void logDebug(LogSegments seg, const string& msg, LogColor color);
 
-        void logWarn(LogSegments seg, string msg);
+    void logDebug(LogSegments seg, const string &msg, LogColor color);
+
+    void logWarn(LogSegments seg, string msg);
 
     void logError(LogSegments seg, string msg);
 
     void logFatal(LogSegments seg, string msg);
+
+    void logProc(unsigned int proc, unsigned int finish);
+
+    void logTrainingProcess(unsigned int batchId, unsigned int epochId, unsigned int batches
+            , unsigned int epochs, float loss, float acc, float epochLoss, float epochAcc);
 }
 
 

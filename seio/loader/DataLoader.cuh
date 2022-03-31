@@ -25,6 +25,9 @@ namespace seio{
     void placeHoldLabelSet(vector<Tensor*>* labels, uint32 LABEL_SIZE, shape4 LABEL_SHAPE);
 
     void fetchCIFAR10(vector<Tensor*>* dataset, vector<Tensor*>* labels, vector<string> filenames);
+
+    void fetchIDX(vector<Tensor*>* dataset, vector<Tensor*>* labels, const string& dataPath, const string& labelPath
+        , uint32 DATA_SIZE, shape4 DATA_SHAPE, shape4 LABEL_SHAPE);
 }
 
 #endif //SEANN_DATALOADER_CUH

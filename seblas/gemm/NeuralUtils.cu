@@ -679,6 +679,12 @@ namespace seblas{
         }
     }
 
+    __global__ void softmaxCEPrepareD(Tensor* a, Tensor* label, Tensor* buf){
+        uint32 globalId = blockIdx.x * blockDim.x + threadIdx.x;
+        if(globalId >= a->dims.size) return;
+        buf->elements[globalId] = -log(a->elements[globalId]) * label->elements[globalId];
+    }
+
     Tensor* relu(Tensor* input, Tensor* output){
         uint32 block = CUDA_BLOCK_SIZE.y * CUDA_BLOCK_SIZE.x;
         uint32 grid = topOff(input->dims.size, block);
@@ -994,5 +1000,29 @@ namespace seblas{
         cudaDeviceSynchronize();
         ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
         return output;
+    }
+
+    float softmaxCECost(Tensor* input, Tensor* label, Tensor* buf){
+        buf->zeroFill();
+        uint32 block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+        uint32 grid = topOff(input->dims.size, block);
+        softmaxCEPrepareD<<<grid, block>>>(input, label, buf);
+        cudaDeviceSynchronize();
+        ErrorHandler::checkDeviceStatus(__FILE__, __LINE__);
+
+        return reduce(buf, buf->elements);
+    }
+
+    //These are host tensors
+    int judgeCorrection(Tensor* input, Tensor* label){
+        uint32 maxIndex = 0;
+        float maxVal = FLT_MIN;
+        for(uint32 i = 0; i < input->dims.size; i++){
+            if(input->elements[i] > maxVal){
+                maxVal = input->elements[i];
+                maxIndex = i;
+            }
+        }
+        return label->elements[maxIndex] > 0 ? 1 : 0;
     }
 }

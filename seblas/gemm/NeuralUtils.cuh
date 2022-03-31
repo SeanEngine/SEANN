@@ -15,34 +15,48 @@ namespace seblas {
     const uint32 REDUCE_WARP = 8;
     const uint32 SOFTMAX_WARP = 32;
 
-    Tensor* relu(Tensor* input, Tensor* output);
-    Tensor* reluDerive(Tensor* input);
+    Tensor *relu(Tensor *input, Tensor *output);
 
-    Tensor* leakyRelu(Tensor* input, Tensor* output, float alpha);
-    Tensor* leakyReluDerive(Tensor* input, float alpha);
+    Tensor *reluDerive(Tensor *input);
 
-    Tensor* sigmoid(Tensor* input, Tensor* output);
-    Tensor* sigmoidDerive(Tensor* input);
+    Tensor *leakyRelu(Tensor *input, Tensor *output, float alpha);
 
-    Tensor* tanh(Tensor* input, Tensor* output);
-    Tensor* tanhDerive(Tensor* input);
+    Tensor *leakyReluDerive(Tensor *input, float alpha);
 
-    float reduce(Tensor* input, float* buffer);
+    Tensor *sigmoid(Tensor *input, Tensor *output);
+
+    Tensor *sigmoidDerive(Tensor *input);
+
+    Tensor *tanh(Tensor *input, Tensor *output);
+
+    Tensor *tanhDerive(Tensor *input);
+
+    float reduce(Tensor *input, float *buffer);
+
     //this is a row reduce operation
-    Tensor* convBiasError(Tensor* input, Tensor* deltaBiases, Tensor* buffer);
+    Tensor *convBiasError(Tensor *input, Tensor *deltaBiases, Tensor *buffer);
 
-    Tensor* softmax(Tensor* input, Tensor* output);
-    Tensor* softmaxDerive(Tensor* input);
+    Tensor *softmax(Tensor *input, Tensor *output);
+
+    Tensor *softmaxDerive(Tensor *input);
 
     //CE -> Cross Entropy, Uses only as the output layer
-    Tensor* softmaxDeriveCE(Tensor* input, Tensor* target, Tensor* output);
+    Tensor *softmaxDeriveCE(Tensor *input, Tensor *target, Tensor *output);
 
-    Tensor* maxPool(Tensor* input, Tensor* output, Tensor* record, uint32 stride);
-    Tensor* maxPoolDerive(Tensor* input, Tensor* output, Tensor* record, uint32 stride);
+    Tensor *maxPool(Tensor *input, Tensor *output, Tensor *record, uint32 stride);
+
+    Tensor *maxPoolDerive(Tensor *input, Tensor *output, Tensor *record, uint32 stride);
 
     //for batch normalization
-    Tensor* batchNorm(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance, Tensor* gamma, Tensor* beta, float epsilon);
-    Tensor* batchNormConv(Tensor* input, Tensor* output, Tensor* mean, Tensor* variance, Tensor* gamma, Tensor* beta, float epsilon);
+    Tensor *batchNorm(Tensor *input, Tensor *output, Tensor *mean, Tensor *variance, Tensor *gamma, Tensor *beta,
+                      float epsilon);
+
+    Tensor *batchNormConv(Tensor *input, Tensor *output, Tensor *mean, Tensor *variance, Tensor *gamma, Tensor *beta,
+                          float epsilon);
+
+    float softmaxCECost(Tensor *input, Tensor *label, Tensor *buf);
+
+    int judgeCorrection(Tensor* input, Tensor* label);
 }
 
 #endif //SEANN_NEURALUTILS_CUH

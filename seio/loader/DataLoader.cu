@@ -6,15 +6,37 @@
 
 namespace seio{
 
-    void fetchDataBinThread(int tx, int threads, vector<Tensor*>* dataset, vector<Tensor*>* labels,
-                            uchar* bytes, uint32 labelOffset, uint32 dataOffset){
+    //TODO: THESE MOUNTAINS OF SHIT MUST BE CLEANED AFTER I MAKE CONV WORKING
+    void fetchDataLabelThread(int tx, int threads, vector<Tensor*>* dataset, vector<Tensor*>* labels,
+                              uchar* bytes, uint32 labelOffset, uint32 dataOffset){
         uint32 stride = labelOffset + dataOffset;
         uint32 dataSize = (*dataset).size();
         uint32 beg = (dataSize/threads) * tx;
         uint32 end = tx == threads - 1 ? dataSize : (dataSize/threads) * (tx + 1);
         for (uint32 i = beg; i < end; i++){
             uchar label = bytes[i * stride];
-            readBinRGB(bytes + i * stride + labelOffset, (*dataset)[i]);
+            readBinPixels(bytes + i * stride + labelOffset, (*dataset)[i]);
+            (*labels)[i]->elements[(int)label] = 1;
+        }
+    }
+
+    void fetchDataThread(int tx, int threads, vector<Tensor*>* dataset,  uchar* bytes,
+                         uint32 dataOffset){
+        uint32 dataSize = (*dataset).size();
+        uint32 beg = (dataSize/threads) * tx;
+        uint32 end = tx == threads - 1 ? dataSize : (dataSize/threads) * (tx + 1);
+        for (uint32 i = beg; i < end; i++){
+            readBinPixels(bytes + i * dataOffset, (*dataset)[i]);
+        }
+    }
+
+    void fetchLabelThread(int tx, int threads, vector<Tensor*>* labels, const uchar* bytes,
+                          uint32 labelOffset){
+        uint32 dataSize = (*labels).size();
+        uint32 beg = (dataSize/threads) * tx;
+        uint32 end = tx == threads - 1 ? dataSize : (dataSize/threads) * (tx + 1);
+        for (uint32 i = beg; i < end; i++){
+            uchar label = bytes[i * labelOffset];
             (*labels)[i]->elements[(int)label] = 1;
         }
     }
@@ -44,8 +66,36 @@ namespace seio{
                      LOG_COLOR_LIGHT_YELLOW);
             loadBinFile(filenames[i].c_str(), data + i * stride, stride);
         }
-        _alloc<CPU_THREADS>(fetchDataBinThread, dataset, labels, data, LABEL_OFFSET, DATA_OFFSET);
+        _alloc<CPU_THREADS>(fetchDataLabelThread, dataset, labels, data, LABEL_OFFSET, DATA_OFFSET);
         cudaFreeHost(data);
         logInfo(LOG_SEG_SEIO,"Dataset CIFAR10 loading complete");
+    }
+
+    void fetchIDX(vector<Tensor*>* dataset, vector<Tensor*>* labels, const string& dataPath, const string& labelPath,
+                  uint32 DATA_SIZE, shape4 DATA_SHAPE, shape4 LABEL_SHAPE){
+        placeHoldDataset(dataset, DATA_SIZE, DATA_SHAPE);
+        placeHoldLabelSet(labels, DATA_SIZE, LABEL_SHAPE);
+
+        //load data files
+        uchar* dataBytes;
+        uchar* labelBytes;
+        cudaMallocHost(&dataBytes, sizeof(uchar) * dataset->size() * DATA_SHAPE.size);
+        cudaMallocHost(&labelBytes, sizeof(uchar) * dataset->size() * LABEL_SHAPE.size);
+        loadBinFile(dataPath.c_str(), dataBytes, dataset->size() * DATA_SHAPE.size);
+        loadBinFile(labelPath.c_str(), labelBytes, dataset->size() * LABEL_SHAPE.size);
+
+        logDebug(LOG_SEG_SEIO, "Fetching IDX data", LOG_COLOR_LIGHT_YELLOW);
+        logDebug(LOG_SEG_SEIO, "Expected Data Size : " + to_string(DATA_SIZE),
+                 LOG_COLOR_LIGHT_YELLOW);
+        //Skip the headers
+        dataBytes += 16 * sizeof(uchar);
+        labelBytes += 8 * sizeof(uchar);
+
+        //Fetch data
+        _alloc<CPU_THREADS>(fetchDataThread, dataset, dataBytes, DATA_SHAPE.size);
+        _alloc<CPU_THREADS>(fetchLabelThread, labels, labelBytes, 1); //Each byte is a label value
+
+        cudaFreeHost(dataBytes - 16 * sizeof(uchar));
+        cudaFreeHost(labelBytes - 8 * sizeof(uchar));
     }
 }

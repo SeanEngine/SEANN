@@ -35,6 +35,31 @@ __global__ void gemmNaive(Tensor *A, Tensor *B, Tensor *C){
     }
 }
 
+__global__ void gemmNaiveTN(Tensor *A, Tensor *B, Tensor *C){
+    uint32 row = threadIdx.y + blockIdx.y * blockDim.y;
+    uint32 col = threadIdx.x + blockDim.x * blockIdx.x;
+    float value = 0;
+    if(row < C->dims.rows && col < C->dims.cols){
+        for (int am = 0; am < A->dims.rows; am++) {
+            value += A->get(am, row) * B->get(am, col);
+        }
+        C->set(value, row, col);
+    }
+}
+
+__global__ void gemmNaiveNTA(Tensor *A, Tensor *B, Tensor *C){
+    uint32 row = threadIdx.y + blockIdx.y * blockDim.y;
+    uint32 col = threadIdx.x + blockDim.x * blockIdx.x;
+    float value = 0;
+    if(row < C->dims.rows && col < C->dims.cols){
+        for (int am = 0; am < A->dims.cols; am++) {
+            value += A->get(row, am) * B->get(col, am);
+        }
+        value += C->get(row,col);
+        C->set(value, row, col);
+    }
+}
+
 /**
  * same as the previous gemmPrefetching4NN but do not use float4 in global memory loading
  * to support all matrix dimensions
@@ -1340,10 +1365,10 @@ __global__ void gemmPrefetching4NT(Tensor* A, Tensor* B, Tensor* C) {
     #pragma unroll
     for(int rm = 0; rm < REGIS_M; rm ++){
         #pragma unroll
-        for(int rn = 0; rn < REGIS_N; rn += 4){
+        for(int rn = 0; rn < REGIS_N; rn ++){
             if((blockM + threadIdx.y * REGIS_M + rm < M && blockN + threadIdx.x * REGIS_N + rn < N)) {
-                toFloat4R(C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
-                                      + blockN + threadIdx.x * REGIS_N + rn]) = toFloat4R(regisC[rm][rn]);
+                C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
+                                      + blockN + threadIdx.x * REGIS_N + rn] = regisC[rm][rn];
             }
         }
     }
@@ -1537,20 +1562,14 @@ __global__ void gemmPrefetching4NTA (Tensor* A, Tensor* B, Tensor* C) {
         }
     }
 
-    float CBuf[4] = {0};
     #pragma unroll
     for (int rm = 0; rm < REGIS_M; rm++) {
         #pragma unroll
-        for (int rn = 0; rn < REGIS_N; rn += 4) {
+        for (int rn = 0; rn < REGIS_N; rn ++) {
             if ((blockM + threadIdx.y * REGIS_M + rm < M && blockN + threadIdx.x * REGIS_N + rn < N)) {
-                toFloat4R(CBuf[0]) = toFloat4R(C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
-                                                           + blockN + threadIdx.x * REGIS_N + rn]);
-                CBuf[0] += regisC[rm][rn];
-                CBuf[1] += regisC[rm][rn + 1];
-                CBuf[2] += regisC[rm][rn + 2];
-                CBuf[3] += regisC[rm][rn + 3];
-                toFloat4R(C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N
-                                      + blockN + threadIdx.x * REGIS_N + rn]) = toFloat4R(CBuf[0]);
+                float cSrc = C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N + blockN + threadIdx.x * REGIS_N + rn];
+                C->elements[(blockM + threadIdx.y * REGIS_M + rm) * N + blockN + threadIdx.x * REGIS_N + rn]
+                = regisC[rm][rn] + cSrc;
             }
         }
     }
@@ -1809,6 +1828,7 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int stride
     const uint32 OW = B->dims.cols;
     const uint32 OH = B->dims.rows;
     const uint32 IC = A->dims.c;
+    const uint32 INV = B->dims.n;
 
     ///allocate smems and registers
     //The shared memory tile
@@ -1976,7 +1996,8 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int stride
             int ih = oh * strideH - padH + fh;
             int iw = ow * strideW - padW + fw;
 
-            if(ih >= 0 && ih < IH && iw >= 0 && iw < IW && ic >= 0 && ic < IC){
+            if(ih >= 0 && ih < IH && iw >= 0 && iw < IW && ic >= 0 && ic < IC
+                           && in >= 0 && in < INV){
                 atomicAdd(C->elements + in * IC * IH * IW +
                 ic * IW * IH + ih * IW + iw, regisC[rm][rn]);
             }
@@ -2205,8 +2226,8 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
 }
 
 Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW, Tensor* biases) {
-    assert(C->dims.rows == (B->dims.rows - A->dims.rows + padH*2)/strideH + 1);
-    assert(C->dims.cols == (B->dims.cols - A->dims.cols + padW*2)/strideW + 1);
+    assert(C->dims.rows == B->dims.rows/strideH);
+    assert(C->dims.cols == B->dims.cols/strideW);
     assert(C->dims.c == A->dims.n && B->dims.c == A->dims.c);
 
     uint32 M = A->dims.n;
@@ -2223,8 +2244,8 @@ Tensor* seblas::conv(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, 
 
 //C is the errors of prev layer and B is for this layer
 Tensor* seblas::convDerive(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW) {
-    assert(B->dims.rows == (C->dims.rows - A->dims.rows + padH*2)/strideH + 1);
-    assert(B->dims.cols == (C->dims.cols - A->dims.cols + padW*2)/strideW + 1);
+    assert(B->dims.rows == C->dims.rows / strideH);
+    assert(B->dims.cols == C->dims.cols / strideW);
     assert(B->dims.c == A->dims.n && C->dims.c == A->dims.c);
 
     uint32 M = A->dims.cols * A->dims.rows * A->dims.c;
@@ -2241,8 +2262,6 @@ Tensor* seblas::convDerive(Tensor *A, Tensor *B, Tensor *C, int strideH, int str
 
 Tensor* seblas::convError(Tensor *A, Tensor *B, Tensor *C, int strideH, int strideW, int padH, int padW) {
     assert(B->dims.c * A->dims.c == C->dims.c * C->dims.n);
-    assert(C->dims.rows == (B->dims.rows - A->dims.rows + padH*2)/strideH + 1);
-    assert(C->dims.cols == (B->dims.cols - A->dims.cols + padW*2)/strideW + 1);
 
     uint32 M = A->dims.c;
     uint32 N = C->dims.rows * C->dims.cols * C->dims.c;
@@ -2266,10 +2285,34 @@ Tensor* seblas::sgemmNaive(Tensor* A, Tensor* B, Tensor* C){
     return C;
 }
 
+Tensor* seblas::sgemmNaiveTN(Tensor* A, Tensor* B, Tensor* C){
+    assert(A->dims.rows == B->dims.rows);
+    assert(A->dims.cols == C->dims.rows && B->dims.cols == C->dims.cols);
+    dim3 grid = dim3((C->dims.cols + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x ,
+                     (C->dims.rows + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
+    gemmNaiveTN<<<grid, CUDA_BLOCK_SIZE>>>(A, B, C);
+    cudaDeviceSynchronize();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
+    return C;
+}
+
+Tensor* seblas::sgemmNaiveNTA(Tensor *A, Tensor *B, Tensor *C) {
+    assert(A->dims.cols == B->dims.cols);
+    assert(A->dims.rows == C->dims.rows && B->dims.rows == C->dims.cols);
+    dim3 grid = dim3((C->dims.cols + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x ,
+                     (C->dims.rows + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
+    gemmNaiveNTA<<<grid, CUDA_BLOCK_SIZE>>>(A, B, C);
+    cudaDeviceSynchronize();
+    ErrorHandler::checkDeviceStatus(__FILE__,__LINE__);
+    return C;
+}
+
+
 Tensor* seblas::sgemm(Tensor *A, Tensor *B, Tensor *C) {
     assertGemm(A,B,C);
     dim3 grid = dim3((C->dims.cols + BN - 1) / BN, (C->dims.rows + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
+
 
     if(A->dims.cols%4==0 && B->dims.cols%4==0){
         gemmPrefetching4NN < BM, BN, BK, RM, RN ><<<grid, block>>>(A, B, C);

@@ -6,14 +6,14 @@
 
 namespace seann {
     void ConvLayer::forwardCalc(Tensor *prevA) {
-        relu(conv(prevA, filters, z, strideH, strideW, padH, padW, biases), a);
+        relu(conv(filters, prevA, z, strideH, strideW, padH, padW, biases), a);
     }
 
     void ConvLayer::backwardCalc(Tensor *prevZ, Tensor *prevError) const {
         *convDerive(filters, errors, prevError, strideH, strideW, padH, padW) * reluDerive(prevZ);
     }
 
-    void ConvLayer::recFilters(Tensor *prevA) const {
+     void ConvLayer::recFilters(Tensor *prevA) const {
         convError(errors, prevA, deltaFilters, strideH, strideW, padH, padW);
     }
 

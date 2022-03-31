@@ -1,15 +1,14 @@
 //
-// Created by DanielSun on 3/21/2022.
+// Created by DanielSun on 3/30/2022.
 //
 
-#ifndef SEANN_CONVSTD_CUH
-#define SEANN_CONVSTD_CUH
+#ifndef SEANN_MNISTNN_CUH
+#define SEANN_MNISTNN_CUH
 
 #include "../Model.cuh"
-#include "../../layers/std/SoftmaxOutLayer.cuh"
 
 namespace seann {
-    class ConvSTD : public Model {
+    class MNISTNN : public Model {
     public:
         void registerModel() override;
 
@@ -23,5 +22,4 @@ namespace seann {
     };
 }
 
-
-#endif //SEANN_CONVSTD_CUH
+#endif //SEANN_MNISTNN_CUH

@@ -21,8 +21,8 @@ namespace seann {
                   bool enableBiases) {
             TYPE = "CONV";
 
-            uint32 oh = (ih - filterSize.rows + 2 * padH) / strideH + 1;
-            uint32 ow = (iw - filterSize.cols + 2 * padW) / strideW + 1;
+            uint32 oh = ih / strideH;
+            uint32 ow = iw / strideW;
             this->enableBias = enableBiases;
 
             filters = Tensor::declare(filterSize)->create();

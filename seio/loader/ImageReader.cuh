@@ -15,7 +15,7 @@ namespace seio{
 
     void loadBinFile(const char* path, uchar* buffer, uint32 size);
 
-    Tensor* readBinRGB(const uchar* target, Tensor* reserved);
+    Tensor* readBinPixels(const uchar* target, Tensor* reserved);
 }
 
 #endif //SEANN_IMAGEREADER_CUH

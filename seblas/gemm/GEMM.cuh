@@ -9,6 +9,8 @@
 
 namespace seblas {
     Tensor* sgemmNaive(Tensor* A, Tensor* B, Tensor* C);
+    Tensor* sgemmNaiveTN(Tensor* A, Tensor* B, Tensor* C);
+    Tensor* sgemmNaiveNTA(Tensor* A, Tensor* B, Tensor* C);
 
     Tensor* sgemm(Tensor* A, Tensor* B, Tensor* C);
     Tensor* sgemmTN(Tensor* A, Tensor* B, Tensor* C);

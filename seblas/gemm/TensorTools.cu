@@ -147,7 +147,7 @@ namespace seblas{
     }
 
     Tensor* subtract(Tensor* A, Tensor* B, Tensor* C){
-        assert(A->dims.size == B->dims.size == C->dims.size);
+        assert(A->dims.size == B->dims.size && B->dims.size == C->dims.size);
         unsigned int block = CUDA_BLOCK_SIZE_1D;
         unsigned int grid = topOff(A->dims.size, block);
 

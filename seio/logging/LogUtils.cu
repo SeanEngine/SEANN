@@ -3,7 +3,6 @@
 //
 
 #include <utility>
-
 #include "LogUtils.cuh"
 
 namespace seio {
@@ -25,7 +24,7 @@ namespace seio {
         dye::colorful<basic_string<char>> levelPrefix;
         switch(level){
             case LogLevel::LOG_LEVEL_DEBUG:
-                levelPrefix = dye::light_purple("DEBUG");
+                levelPrefix = dye::purple("DEBUG");
                 break;
             case LogLevel::LOG_LEVEL_INFO:
                 levelPrefix = dye::light_blue("INFO");
@@ -45,11 +44,11 @@ namespace seio {
         struct tm *local = localtime(&secs);
 
         //print the current time
-        cout<<dye::light_green("[")<<dye::light_red(local->tm_hour)<<dye::light_green(":")
-        <<dye::light_red(local->tm_min)<<dye::light_green(":")<<dye::light_red(local->tm_sec);
+        cout<<dye::light_purple("[")<<dye::light_red(local->tm_hour)<<dye::light_purple(":")
+        <<dye::light_red(local->tm_min)<<dye::light_purple(":")<<dye::light_red(local->tm_sec);
 
         //print the log segment
-        cout<<dye::light_green("|")<<segName<<dye::light_green("]");
+        cout<<dye::light_purple("|")<<segName<<dye::light_purple("]");
 
         //print the log level
         if(level == LogLevel::LOG_LEVEL_ERROR || level == LogLevel::LOG_LEVEL_FATAL)
@@ -121,7 +120,7 @@ namespace seio {
 
     void logDebug(LogSegments seg, string msg){
         printLogHead(LogLevel::LOG_LEVEL_DEBUG, seg);
-        cout<<dye::purple(std::move(msg))<<endl;
+        cout<<dye::grey(std::move(msg))<<endl;
     }
 
     void logDebug(LogSegments seg, const string& msg, LogColor color){
@@ -143,5 +142,37 @@ namespace seio {
     void logFatal(LogSegments seg, string msg){
         printLogHead(LogLevel::LOG_LEVEL_FATAL, seg);
         cout<<dye::red(std::move(msg))<<endl;
+    }
+
+    #define RENDER_LENGTH 30
+    void logProc(unsigned int proc, unsigned int finish) {
+        char procBar[RENDER_LENGTH+1] = {0};
+        unsigned int procLen = (proc * 30) / finish;
+        for(unsigned int i = 0; i < RENDER_LENGTH; i++)
+            if (i < procLen)
+                procBar[i] = '=';
+            else if (i == procLen)
+                procBar[i] = '>';
+            else
+                procBar[i] = ' ';
+        procBar[RENDER_LENGTH] = '\0';
+        string procBarStr = '[' + string(procBar) + "] ";
+        cout<<dye::red(procBarStr)<<dye::light_yellow(to_string(proc))<<
+             dye::red("/")<<dye::yellow(to_string(finish));
+    }
+
+    void logTrainingProcess(unsigned int batchId, unsigned int epochId, unsigned int batches
+        , unsigned int epochs, float loss, float acc, float epochLoss, float epochAcc) {
+        cout<<endl;
+        printLogHead(LOG_LEVEL_INFO, LOG_SEG_SEANN);
+        cout<<dye::purple("Current Batch: ");
+        logProc(batchId, batches);
+        cout<<"\n     "<<dye::blue("Loss: " + to_string(loss))<<" "<<dye::blue("Acc: " + to_string(acc))<<endl;
+
+        printLogHead(LOG_LEVEL_INFO, LOG_SEG_SEANN);
+        cout<<dye::purple("Current Epoch: ");
+        logProc(epochId, epochs);
+        cout<<"\n     "<<dye::blue("Epoch_Loss: " + to_string(epochLoss))
+            <<" "<<dye::blue("Epoch_Acc: " + to_string(epochAcc))<<endl;
     }
 }

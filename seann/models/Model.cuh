@@ -13,12 +13,15 @@
 #include "../layers/std/DenseLayer.cuh"
 #include "../layers/std/SoftmaxOutLayer.cuh"
 #include "../../seio/loader/DataLoader.cuh"
+#include "../../seblas/gemm/NeuralUtils.cuh"
 
 
 using namespace seio;
+using namespace seblas;
 namespace seann {
     class Model {
     public:
+        Tensor* modelOutH, *labelH, *costBuf;
         vector<Layer *> layers;
 
         vector<Tensor *> dataset[2];  //on host
@@ -26,20 +29,21 @@ namespace seann {
 
         vector<Tensor *> dataBatch[2];
         vector<Tensor *> labelBatch[2];
+        uint32 DATA_SIZE;
 
         virtual void registerModel() = 0;
 
-        virtual void loadDataset() = 0;
+        virtual void loadDataset(Config conf) = 0;
 
-        virtual void loadModel() = 0;
+        virtual void loadModel(Config conf) = 0;
 
-        virtual void saveModel() = 0;
+        virtual void saveModel(Config conf) = 0;
 
         virtual void initModel();
 
         void prepareBatch(Config conf);
 
-        void fetchBatch(Config conf, uint32* batchId, uint32* epochId);
+        void fetchBatch(Config conf, uint32 batchId, uint32 epochId);
 
         void train(Config conf);
 
