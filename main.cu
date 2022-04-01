@@ -28,15 +28,7 @@ using namespace std;
 
 int main(int argc, char **argv) {
 
-    auto* A = Tensor::declare(50,1)->create()->constFill(2);
-    auto* B = Tensor::declare(1,50)->create()->constFill(2);
-    auto* C = Tensor::declare(50,50)->create()->zeroFill();
-
-    inspect(sgemm(A,B,C));
-    C->zeroFill();
-    inspect(sgemmNaive(A,B,C));
-/*
     Model *model = new MNISTNN();
     model->train(*new Config());
-*/
+
 }

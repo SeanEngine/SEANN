@@ -29,7 +29,7 @@ namespace seann {
     void DenseLayer::recWeights(Tensor *prevA) const {
         shape4 shape = prevA->dims;
         prevA->reshape(shape.size, 1);
-        sgemmNaiveNTA(errors, prevA, deltaWeights);
+        sgemmNTA(errors, prevA, deltaWeights);
         prevA->reshape(shape);
     }
 

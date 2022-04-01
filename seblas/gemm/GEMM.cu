@@ -127,7 +127,7 @@ __global__ void gemmPrefetchingNN(Tensor *A, Tensor *B, Tensor *C){
 
     #pragma unroll
     for(int i=0; i<BLOCK_K; i+= readRowStrideB){
-        if(readRowB + i< K && blockN + readColB < N){
+        if(readRowB + i < K && blockN + readColB < N){
             tileB[0][readRowB+i][readColB] = ptrB[(readRowB + i)*N + readColB];
         }
     }
@@ -146,7 +146,7 @@ __global__ void gemmPrefetchingNN(Tensor *A, Tensor *B, Tensor *C){
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -327,7 +327,7 @@ __global__ void gemmPrefetchingTN(Tensor *A, Tensor *B, Tensor *C){
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -508,7 +508,7 @@ __global__ void gemmPrefetchingNT(Tensor *A, Tensor *B, Tensor *C){
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -676,7 +676,7 @@ __global__ void gemmPrefetchingNTA(Tensor *A, Tensor *B, Tensor *C){
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -863,7 +863,7 @@ __global__ void gemmPrefetching4NN(Tensor *A, Tensor *B, Tensor *C) {
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K){
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K){
         //prefetch
         if(nextTileID < K) {
             #pragma unroll
@@ -1063,7 +1063,7 @@ __global__ void gemmPrefetching4TN(Tensor *A, Tensor *B, Tensor *C){
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -1259,7 +1259,7 @@ __global__ void gemmPrefetching4NT(Tensor* A, Tensor* B, Tensor* C) {
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for (int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID += BLOCK_K) {
+    for (int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID += BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -1460,7 +1460,7 @@ __global__ void gemmPrefetching4NTA (Tensor* A, Tensor* B, Tensor* C) {
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for (int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID += BLOCK_K) {
+    for (int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID += BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -1691,7 +1691,7 @@ __global__ void gemmImplicit4D(Tensor* A, Tensor* B, Tensor* C, int strideH, int
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -1898,7 +1898,7 @@ __global__ void gemmImplicitBackprop(Tensor *A, Tensor *B, Tensor *C, int stride
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -2119,7 +2119,7 @@ __global__ void gemmImplicitError(Tensor *A, Tensor *B, Tensor *C, int strideH, 
     ///main loop
     int writeStageFlag = 1;
     #pragma unroll
-    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K - 1; nextTileID+=BLOCK_K) {
+    for(int nextTileID = BLOCK_K; nextTileID < K + BLOCK_K; nextTileID+=BLOCK_K) {
         //prefetch
         if (nextTileID < K) {
             #pragma unroll
@@ -2312,7 +2312,6 @@ Tensor* seblas::sgemm(Tensor *A, Tensor *B, Tensor *C) {
     assertGemm(A,B,C);
     dim3 grid = dim3((C->dims.cols + BN - 1) / BN, (C->dims.rows + BM - 1) / BM);
     dim3 block = dim3(BN / RN, BM / RM);
-
 
     if(A->dims.cols%4==0 && B->dims.cols%4==0){
         gemmPrefetching4NN < BM, BN, BK, RM, RN ><<<grid, block>>>(A, B, C);
