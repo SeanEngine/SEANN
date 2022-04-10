@@ -7,8 +7,11 @@
 void seann::MNISTNN::registerModel() {
     logInfo(LOG_SEG_SEANN, "------< Registering model : MNIST >------", LOG_COLOR_LIGHT_PURPLE);
     layers.push_back(new InputLayer());
-    layers.push_back(new DenseLayer(784, 120));
-    layers.push_back(new DenseLayer(120, 120));
+    layers.push_back(new ConvLayer(shape4(4,1,3,3), 28,28,1,1,1,1,false));
+    layers.push_back(new ConvLayer(shape4(4,4,3,3), 28,28,1,1,1,1,false));
+    layers.push_back(new ConvLayer(shape4(4,4,3,3), 28,28,1,1,1,1,false));
+    layers.push_back(new ConvLayer(shape4(4,4,3,3), 28,28,1,1,1,1,false));
+    layers.push_back(new DenseLayer(3136, 120));
     layers.push_back(new SoftmaxOutLayer(120, 10));
 
     modelOutH = Tensor::declare(10,1)->createHost();

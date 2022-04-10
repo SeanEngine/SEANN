@@ -31,4 +31,19 @@ int main(int argc, char **argv) {
     Model *model = new MNISTNN();
     model->train(*new Config());
 
-}
+/*
+    auto* F2 = readRGB(R"(C:\Users\DanielSun\Desktop\resources\mnist\decompress_mnist\test\0\0.bmp)",
+                       Tensor::declare(1, 3, 28, 28)->createHost())->toDevice();
+
+    auto* F1 = readRGB(R"(C:\Users\DanielSun\Desktop\resources\mnist\decompress_mnist\test\0\1.bmp)",
+                      Tensor::declare(1, 3, 28, 28)->createHost())->toDevice();
+
+    auto* A = Tensor::declare(1, 3, 28, 28)->attachElements(F1->elements);
+    auto* B = Tensor::declare(1, 3, 28, 28)->attachElements(F2->elements);
+
+    auto* C = Tensor::declare(3, 3, 3, 3)->create();
+
+    C = convError(A, B, C, 2,2,1,1);
+    inspect(C);
+*/
+ }

@@ -23,7 +23,7 @@ namespace seann {
     }
 
     void ConvLayer::applyFilters(float LEARNING_RATE, uint32 BATCH_SIZE) const {
-        *filters - *deltaFilters * (LEARNING_RATE / (float) BATCH_SIZE);
+        *filters - *(deltaFilters) * (LEARNING_RATE / (float) BATCH_SIZE);
         deltaFilters->zeroFill();
     }
 

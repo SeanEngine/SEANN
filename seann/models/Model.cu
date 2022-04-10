@@ -92,14 +92,8 @@ namespace seann {
                         layers[layerIdx]->forward();
                     }
 
-                    auto* proc = (SoftmaxOutLayer*)layers.back();
-                    /*
-                    if(epochId > 0) {
-                        inspect(proc->weights);
-                        inspect(proc->z);
-                        inspect(proc->a);
-                    }
-                     */
+                    //auto* proc = (ConvLayer*)layers[2];
+                    //inspect(proc->a);
 
                     ///cost
                     batchCost += calcSampleCost(labelBatch[usingFlag][i]);
@@ -108,6 +102,7 @@ namespace seann {
                     cudaMemcpy(labelH->elements,labelBatch[usingFlag][i]->elements,
                                labelBatch[usingFlag][i]->dims.size * sizeof(float), cudaMemcpyDeviceToHost);
                     batchAccuracy += (float)judgeCorrection(modelOutH, labelH);
+                    //inspect(proc->a);
 
                     ///backward
                     layers[layers.size() - 1]->backwardOut(labelBatch[usingFlag][i]);
@@ -127,6 +122,7 @@ namespace seann {
                 epochCost += batchCost;
                 epochAccuracy += batchAccuracy;
 
+                if(bID == 599)
                 logTrainingProcess(bID, epochId, batches, conf.EPOCHS
                     , batchCost / (float)conf.BATCH_SIZE, batchAccuracy / (float)conf.BATCH_SIZE
                     , epochCost / (float)((bID+1) * conf.BATCH_SIZE),

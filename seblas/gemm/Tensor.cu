@@ -131,4 +131,15 @@ namespace seblas {
     Tensor *Tensor::operator*(float val) {
         return constProduct(this, val);
     }
+
+    Tensor *Tensor::toDevice() const {
+        auto* output = Tensor::declare(this->dims)->create();
+        cudaMemcpy(output->elements, this->elements, sizeof(float) * this->dims.size, cudaMemcpyHostToDevice);
+        return output;
+    }
+
+    Tensor *Tensor::attachElements(float* target) {
+        this->elements = target;
+        return this;
+    }
 }

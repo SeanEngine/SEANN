@@ -27,7 +27,6 @@ namespace seio{
                 }
             }
         }
-
         return reserved;
     }
 

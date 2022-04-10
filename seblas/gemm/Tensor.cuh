@@ -145,6 +145,10 @@ namespace seblas {
         //alloc the tensor on host memory
         Tensor* createHost();
 
+        Tensor* toDevice() const;
+
+        Tensor* attachElements(float* target);
+
         //simple randomizer to init numbers between 1 and -1
         Tensor* randomFill();
         Tensor* zeroFill();

@@ -8,17 +8,14 @@
 namespace seann {
     void seann::ConvSTD::registerModel() {
         logInfo(LOG_SEG_SEANN, "------< Registering model : ConvSTD >------", LOG_COLOR_LIGHT_PURPLE);
-        layers.push_back(new InputLayer());
-        layers.push_back(new ConvLayer(shape4(8, 3, 3, 3), 32, 32, 1, 1, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(8, 8, 3, 3), 32, 32, 1, 1, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(8, 8, 3, 3), 32, 32, 1, 1, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(16, 8, 3, 3), 32, 32, 2, 2, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(16, 16, 3, 3), 16, 16, 1, 1, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(16, 16, 3, 3), 16, 16, 1, 1, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(32, 16, 3, 3), 16, 16, 2, 2, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(32, 32, 3, 3), 8, 8, 1, 1, 1, 1, true));
-        layers.push_back(new ConvLayer(shape4(32, 32, 3, 3), 8, 8, 1, 1, 1, 1, true));
-        layers.push_back(new DenseLayer(2048, 1024));
+        layers.push_back(new InputLayer());\
+
+        layers.push_back(new ConvLayer(shape4(8, 3, 3, 3), 32, 32, 1, 1, 1, 1, false));
+        layers.push_back(new ConvLayer(shape4(8, 8, 3, 3), 32, 32, 1, 1, 1, 1, false));
+        layers.push_back(new ConvLayer(shape4(8, 8, 3, 3), 32, 32, 1, 1, 1, 1, false));
+        layers.push_back(new ConvLayer(shape4(8, 8, 3, 3), 32, 32, 1, 1, 1, 1, false));
+        layers.push_back(new ConvLayer(shape4(16, 8, 3, 3), 32, 32, 2, 2, 1, 1, false));
+        layers.push_back(new DenseLayer(3072, 1024));
         layers.push_back(new DenseLayer(1024, 1024));
         layers.push_back(new DenseLayer(1024, 1024));
         layers.push_back(new SoftmaxOutLayer(1024, 10));

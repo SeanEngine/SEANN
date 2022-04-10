@@ -39,10 +39,12 @@ namespace seann {
 
     void DenseLayer::applyWeights(uint32 BATCH_SIZE, float LEARNING_RATE) const {
         *weights - *deltaWeights * (LEARNING_RATE / (float) BATCH_SIZE);
+        deltaWeights->zeroFill();
     }
 
     void DenseLayer::applyBiases(uint32 BATCH_SIZE, float LEARNING_RATE) const {
         *biases - *deltaBiases * (LEARNING_RATE / (float) BATCH_SIZE);
+        deltaBiases->zeroFill();
     }
 
     void DenseLayer::forward(Layer *prev) {
